@@ -15,6 +15,24 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
+# 说明：
+# 预测需要做这样几件事：
+# 1. 确实数据是否平稳
+# 2. 处理数据，进行差分
+# 3. 拟合模型
+# 4. 预测
+# 传统来说，平稳与否是一个时间序列预测是否可行的标志。但现在也有很多手段可以在务虚平稳条件下进行预测。
+# 模型除了prophet、ARIMA，还有auto.gluon.ai和PatchTST。
+# 这里提供预测所需要的各类方法。
 
-def hello() -> str:
-    return "Hello from pytoolsz!"
+import prophet as fp
+
+class forecast(object):
+    def __init__(self) -> None:
+        pass
+    def fit(self,data):
+        pass
+    def predict(self,data):
+        pass
+    def plot(self):
+        pass

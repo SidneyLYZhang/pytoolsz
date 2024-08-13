@@ -5,10 +5,12 @@ description = "A set of Python Tools, mainly used to deal with work problems."
 authors = [
     { name = "Sidney Zhang", email = "zly@lyzhang.me" }
 ]
-dependencies = []
+dependencies = [
+    "prophet>=1.1.5",
+]
 readme = "README.md"
 requires-python = ">= 3.8"
-license = "MulanPSL-2.0 license"
+license = {file = "LICENSE"}
 
 [build-system]
 requires = ["hatchling"]

@@ -15,6 +15,8 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
+def read_data():
+    pass
 
-def hello() -> str:
-    return "Hello from pytoolsz!"
+def read_zipdata():
+    pass
