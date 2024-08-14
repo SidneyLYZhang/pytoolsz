@@ -4,7 +4,7 @@
 # |  __/| |_| || | (_) | (_) | \__ \/ /
 # |_|    \__, ||_|\___/ \___/|_|___/___|
 #        |___/
-
+#
 # Copyright (c) 2024 Sidney Zhang <zly@lyzhang.me>
 # PyToolsz is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions of the Mulan PSL v2.
@@ -34,7 +34,11 @@
 import prophet as fp
 
 class forecast(object):
-    def __init__(self) -> None:
+    MODES = ["arima","prophet","patchtst","autogluon"]
+    def __init__(self, mode:str = "arima") -> None:
+        if mode not in forecast.MODES:
+            raise ValueError("mode must be one of {}".format(forecast.MODES))
+        self.__mode = mode
         pass
     def fit(self,data):
         pass
