@@ -29,11 +29,11 @@ def getreader(dirfile:Path|str, used_by:str|None = None):
     else:
         return getattr(pl, "read_{}".format(used_by))
 
-def just_load(filepath:str, engine:str = "polars", 
+def just_load(filepath:str|Path, engine:str = "polars", 
               used_by:str|None = None, **kwgs) -> pl.DataFrame|pd.DataFrame:
     """load file to DataFrame"""
     rFunc = getreader(filepath, used_by)
-    res = rFunc(filepath, **kwgs)
+    res = rFunc(Path(filepath), **kwgs)
     if engine not in ["polars","pandas"]:
         raise ValueError("engine must be one of {}".format(["polars","pandas"]))
     else:
@@ -45,7 +45,7 @@ class DataFrame(object):
         if engine not in DataFrame.__ENGINES:
             raise ValueError("engine must be one of {}".format(DataFrame.__ENGINES))
         self.__data = just_load(filepath, engine, **kwgs)
-        self.__filepath = filepath
+        self.__filepath = Path(filepath)
     def __repr__(self) -> str:
         return self.__data.__repr__()
     def __str__(self) -> str:
@@ -60,8 +60,23 @@ class DataFrame(object):
         return self.__data.columns
     @property
     def stat(self) :
-        pass
+        return self.__filepath.stat()
     def get(self, type:str = "polars") -> pl.DataFrame|pd.DataFrame:
         if type not in DataFrame.__ENGINES:
             raise ValueError("type must be one of {}".format(DataFrame.__ENGINES))
-        return self.__data
+        return self.__data if type == "polars" else self.__data.to_pandas()
+    def convert(self, to:str) -> any:
+        funx = getattr(self.__data, "to_{}".format(to), None)
+        if funx is None:
+            raise ValueError("Don't have this convert method!")
+        return funx()
+    def into_timeseries(self, date:str, value:str) -> pd.DataFrame :
+        return self.__data.set_index(date).to_pandas()[value]
+    def into_training(self, values:list[str], target:str, 
+                      index:str|None = None, into_ts:bool = False,
+                      N_test:int = 10) -> pd.DataFrame :
+        pass
+
+
+
+    
