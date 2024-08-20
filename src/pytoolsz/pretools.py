@@ -17,6 +17,7 @@
 
 from pytoolsz.dataframe import just_load
 from pathlib import Path
+import numpy as np
 
 import shutil
 import re
@@ -52,4 +53,13 @@ def convert_suffix(file:str, to:str = "csv") -> None :
         func = getattr(data, "write_{}".format(to), data.write_csv)
         func(file_path.with_suffix('.'+to))
     print("converted successfully!")
-    
+
+def youtube_datetime():
+    pass
+
+def around_right(nums, keep_n:int = 2) :
+    """
+    用于更准确的四舍五入操作。
+    """
+    middleNum = np.around(nums, decimals=(keep_n+4))
+    return np.around(middleNum, decimals=keep_n)

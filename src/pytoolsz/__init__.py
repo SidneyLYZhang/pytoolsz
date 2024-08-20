@@ -15,7 +15,13 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
+from pytoolsz.dataframe import DataFrame
 
+def version() -> str:
+    version_txt = [
+        "0.1.0",
+        "Copyright (c) 2024 Sidney Zhang <zly@lyzhang.me>",
+        "PyToolsz is licensed under Mulan PSL v2."
+    ]
+    return "\n".join(version_txt)
 
-def hello() -> str:
-    return "Hello from pytoolsz!"

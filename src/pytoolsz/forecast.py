@@ -41,7 +41,8 @@ import pandas as pd
 import numpy as np
 
 
-def auto_orders(data:pd.Series, diff_max:int = 40, use_log:bool = False) -> tuple:
+def auto_orders(data:pd.Series, diff_max:int = 40, 
+                use_log:bool = False) -> tuple:
     """自动选择合适时序特征"""
     tdt = np.log(data) if use_log else data
     tmax = len(tdt) if diff_max > len(tdt) else diff_max
@@ -73,19 +74,19 @@ def auto_orders(data:pd.Series, diff_max:int = 40, use_log:bool = False) -> tupl
         Pl = list(range(0,p+1))
         bD = 1
         Ql = list(range(0,q+1))
-        lPDQl = list(product(Pl,Dl,Ql,[s]))
+        lPDQl = list(product(Pl,[bD],Ql,[s]))
         PDQtrend = product(lPDQl,['n',"c",'t','ct'])
         aic_min = 100000
         for ix in PDQtrend:
-            model = SARIMAX(tdt,order=(p,d,d),seasonal_order=ix[0],trend=ix[1]).fit()
+            model = SARIMAX(tdt,order=(p,d,d),
+                            seasonal_order=ix[0],
+                            trend=ix[1]).fit(disp=False)
             aic = model.aic
             if aic < aic_min:
                 aic_min = aic
                 bP,bD,bQ,_ = ix[0]
                 bT = ix[1]
     return ((p,d,q),(bP,bD,bQ,int(s)),bT)
-
-    
 
 class forecast(object):
     MODES = ["arima","prophet","patchtst","autogluon"]
@@ -110,20 +111,20 @@ class forecast(object):
                 self.__diff_order = 0
         else:
             self.__diff_order = orders
+        self.__kwargs = kwgs
         if mode == "prophet":
-            self.__model = Prophet(**kwgs)
+            self.__mFunc = Prophet
         elif mode == "arima" :
-            self.__model = None
+            self.__mFunc = SARIMAX
         elif mode == "patchtst" :
-            self.__model = None
+            self.__mFunc = None
         else:
-            self.__model = None
+            self.__mFunc = None
+        self.__model = None
         self.__fitted = False
         self.__future = None
         self.__oridata = None
         self.__overdata = None
-    def differential(self, data):
-        pass
     def fit(self,data):
         pass
     def predict(self,data):

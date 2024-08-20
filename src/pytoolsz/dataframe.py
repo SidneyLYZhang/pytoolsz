@@ -17,7 +17,14 @@
 
 import pandas as pd
 import polars as pl
+from zipfile import ZipFile
+from os import stat_result
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import Self
+from rich import print
+
+
 
 def getreader(dirfile:Path|str, used_by:str|None = None):
     if used_by is None :
@@ -39,13 +46,20 @@ def just_load(filepath:str|Path, engine:str = "polars",
     else:
         return res.to_pandas() if engine == "pandas" else res
 
-class DataFrame(object):
+class szDataFrame(object):
     __ENGINES = ["polars","pandas"]
-    def __init__(self, filepath:str, engine:str = "polars", **kwgs) -> None:
-        if engine not in DataFrame.__ENGINES:
-            raise ValueError("engine must be one of {}".format(DataFrame.__ENGINES))
-        self.__data = just_load(filepath, engine, **kwgs)
-        self.__filepath = Path(filepath)
+    def __init__(self, filepath:str|None, engine:str = "polars", 
+                 from_data:pl.DataFrame|pd.DataFrame|None = None, **kwgs) -> None:
+        if engine not in szDataFrame.__ENGINES:
+            raise ValueError("engine must be one of {}".format(szDataFrame.__ENGINES))
+        if from_data is None :
+            self.__data = just_load(filepath, engine, **kwgs)
+        else:
+            if isinstance(from_data, pl.DataFrame):
+                self.__data = from_data
+            else:
+                self.__data = pl.from_pandas(from_data)
+        self.__filepath = Path(filepath) if filepath else None
     def __repr__(self) -> str:
         return self.__data.__repr__()
     def __str__(self) -> str:
@@ -59,17 +73,24 @@ class DataFrame(object):
     def columns(self) -> list:
         return self.__data.columns
     @property
-    def stat(self) :
-        return self.__filepath.stat()
+    def stat(self) -> stat_result|None:
+        if self.__filepath is None:
+            res = None
+        else :
+            res = self.__filepath.stat()
+        return res
     def get(self, type:str = "polars") -> pl.DataFrame|pd.DataFrame:
-        if type not in DataFrame.__ENGINES:
-            raise ValueError("type must be one of {}".format(DataFrame.__ENGINES))
+        if type not in szDataFrame.__ENGINES:
+            raise ValueError("type must be one of {}".format(szDataFrame.__ENGINES))
         return self.__data if type == "polars" else self.__data.to_pandas()
     def convert(self, to:str) -> any:
         funx = getattr(self.__data, "to_{}".format(to), None)
         if funx is None:
             raise ValueError("Don't have this convert method!")
         return funx()
+    def append(self, other:Self) -> Self:
+        data = self.__data.vstack(other.get())
+        return szDataFrame(filepath=self.__filepath, from_data=data)
     def into_timeseries(self, date:str, value:str) -> pd.DataFrame :
         return self.__data.set_index(date).to_pandas()[value]
     def into_training(self, values:list[str], target:str, 
@@ -78,5 +99,17 @@ class DataFrame(object):
         pass
 
 
+def zipreader(zipFilepath:Path|str, subFile:str, **kwgs) -> szDataFrame:
+    with TemporaryDirectory() as tmpdirname:
+        with ZipFile(Path(zipFilepath), "r") as teZip:
+            teZip.extractall(path = tmpdirname)
+            subFiles = teZip.namelist()
+        if subFile not in subFiles:
+            raise ValueError("'{}' not in zip-file({})!".format(subFile,zipFilepath))
+        return szDataFrame(Path(tmpdirname)/subFile, **kwgs)
 
-    
+if __name__ == "__main__":
+    rootpath = Path(__file__).absolute().parent.parent
+    data = zipreader(rootpath/"datasets/iris/iris.zip",
+                     "iris.data")
+    print(data)
