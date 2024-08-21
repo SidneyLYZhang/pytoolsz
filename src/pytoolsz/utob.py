@@ -16,7 +16,14 @@
 # See the Mulan PSL v2 for more details.
 
 from pathlib import Path
-from pytoolsz.dataframe import DataFrame,zipreader
+from pytoolsz.frame import DataFrame,zipreader
+from collections.abc import Mapping,Iterable
+from polars._typing import IntoExpr
+import pycountry as pct
+import gettext
+import polars as pl
+import polars.selectors as cs
+
 
 
 TARGETNAMES = ["频道","内容","流量来源","地理位置","观看者年龄","观看者性别","日期","收入来源",
@@ -31,20 +38,62 @@ COMPARENAME = "（比较对象）"
 
 def read_YouTube_zipdata(tarName:str, between_date:list[str], channelName:str,
                            dataName:str, rootpath:Path|None = None, 
+                           lastnum:bool|int = False,
                            compare:bool = False) -> DataFrame:
-    filelike = "{} {}_{} {}.zip".format(tarName,*between_date,channelName)
+    """
+    读取下载的YouTube数据。
+    通常YouTube数据下载后会被压缩到zip文件中，并包含多个数据csv文件。
+    """
+    if isinstance(lastnum, bool) :
+        plus_str = " (1)" if lastnum else ""
+    else :
+        plus_str = " ({})".format(lastnum)
+    filelike = "{} {}_{} {}{}.zip".format(tarName,*between_date,channelName,plus_str)
     csvlike = "{}{}.csv".format(dataName,COMPARENAME if compare else "")
     homepath = Path(rootpath) if rootpath else Path(".").absolute()
     data = zipreader(homepath/filelike, csvlike)
     return data
 
 def read_multiChannel(tarName:str, between_date:list[str], channelNames:list[str],
-                      dataName:str, rootpath:Path|None = None, 
-                      compare:bool = False, group_by:str|None = None) -> DataFrame:
+                      dataName:str, lastnum:bool|int = False,
+                      rootpath:Path|None = None,
+                      compare:bool = False, 
+                      group_by:str|Mapping[str,IntoExpr|Iterable[IntoExpr]|Mapping[str,IntoExpr]]|None = None
+                    ) -> DataFrame:
     data = []
     for chs in channelNames :
-        data.append(read_YouTube_zipdata(tarName, between_date, chs, 
+        data.append(read_YouTube_zipdata(tarName, between_date, chs, lastnum, 
                                          dataName, rootpath, compare))
+    if group_by is not None :
+        if isinstance(group_by, str) :
+            data = pl.concat(data).group_by(group_by).agg(cs.numeric().sum())
+        else :
+            data = pl.concat(data)
+            for key,value in group_by.items() :
+                if isinstance(value, Mapping[str,IntoExpr]):
+                    data = data.group_by(key).agg(**value)
+                elif isinstance(value, Iterable[IntoExpr]):
+                    data = data.group_by(key).agg(*value)
+                else :
+                    data = data.group_by(key).agg(value)
     return data
 
-
+def alpha2_Chinese(code2:str) -> str:
+    """
+    转换国家代码iso3166-alpha2代码为中文名称。
+    """
+    try:
+        if code2 == "总计":
+            res = code2
+        elif code2 == "ZZ" :
+            res = "(未知)"
+        elif code2 == "XK" :
+            res = "科索沃"
+        else :
+            coun = pct.countries.get(alpha_2 = code2)
+            translator = gettext.translation('iso3166-1', pct.LOCALES_DIR, languages=['zh'])
+            translator.install()
+            res = translator.gettext(coun.name)
+        return (("中国"+res) if res in ["香港","澳门"] else res)
+    except:
+        raise ValueError("无法识别的国家代码：{}".format(code2))

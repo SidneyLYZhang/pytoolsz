@@ -15,7 +15,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
-from pytoolsz.dataframe import DataFrame
+from pytoolsz.frame import szDataFrame
 
 def version() -> str:
     version_txt = [

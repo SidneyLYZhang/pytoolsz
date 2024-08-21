@@ -15,7 +15,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
-from pytoolsz.dataframe import just_load
+from pytoolsz.frame import just_load
 from pathlib import Path
 import numpy as np
 

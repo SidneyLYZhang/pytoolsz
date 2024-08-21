@@ -25,7 +25,6 @@ from typing import Self
 from rich import print
 
 
-
 def getreader(dirfile:Path|str, used_by:str|None = None):
     if used_by is None :
         fna = Path(dirfile).suffix
