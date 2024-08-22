@@ -17,6 +17,13 @@
 
 from pytoolsz.frame import just_load
 from pathlib import Path
+from numbers import Number
+from rich.markdown import Markdown
+from rich.console import Console
+from decimal import Decimal,ROUND_HALF_UP
+from collections.abc import Iterable
+
+
 import numpy as np
 
 import shutil
@@ -57,9 +64,41 @@ def convert_suffix(file:str, to:str = "csv") -> None :
 def youtube_datetime():
     pass
 
-def around_right(nums, keep_n:int = 2) :
+def around_right(nums:Number|None, keep_n:int = 2, 
+                 null_na_handle:bool|float = False,
+                 precise:bool = False) :
     """
     用于更准确的四舍五入操作。
+    对于None、Null或者NAN/NA等情况，可通过null_na_handle参数进行处理。
+    默认不处理。
+    通过null_na_handle参数也可以指定把这些转化为指定数值。
+    通过precise参数，可以启用精准四舍五入计算。
     """
-    middleNum = np.around(nums, decimals=(keep_n+4))
-    return np.around(middleNum, decimals=keep_n)
+    if (nums is None) or (nums is np.nan):
+        if isinstance(null_na_handle, bool) :
+            tNum = np.float64(0.0) if null_na_handle else nums
+        else :
+            tNum = np.float64(null_na_handle)
+    elif nums is np.inf :
+        return np.inf
+    else :
+        tNum = nums
+    if precise :
+        def decimal_round(tn:str, keep:int):
+            return Decimal(tn).quantize(Decimal('0.'+'0'*keep), rounding=ROUND_HALF_UP)
+        middleNum = decimal_round(str(tNum), keep_n+4)
+        return np.float64(decimal_round(str(middleNum), keep_n))
+    else :
+        middleNum = np.around(tNum, decimals=(keep_n+4))
+        return np.around(middleNum, decimals=keep_n)
+
+def round(numbs:Iterable) -> Iterable[float] :
+    
+    pass
+
+def markdown_print(text:str) -> None:
+    """
+    使用Markdown方式进行文本输出。
+    """
+    console = Console()
+    console.print(Markdown(text))

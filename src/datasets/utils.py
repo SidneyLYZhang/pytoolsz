@@ -15,6 +15,11 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
-from pytoolsz.frame import szDataFrame
-from pathlib import Path
+import datasets.iris as iris
+import datasets.covid as covid
+from pytoolsz.pretools import markdown_print
 
+if __name__ == "__main__":
+    markdown_print(iris.DESCRLONG)
+    print(covid.data().columns)
+    print(type(covid.data()))

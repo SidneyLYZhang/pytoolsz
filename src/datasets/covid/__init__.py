@@ -16,7 +16,7 @@
 # See the Mulan PSL v2 for more details.
 
 from pathlib import Path
-from pytoolsz.frame import szDataFrame,zipreader
+from pytoolsz.frame import szDataFrame
 
 CITATION   = """
 Fisher,R. A.. (1988). Iris. 
@@ -67,5 +67,5 @@ Variables Table::
 
 
 def data() -> szDataFrame :
-    keypath = Path(__file__).parent / "iris.zip"
-    return zipreader(keypath,"iris.data")
+    keypath = Path(__file__).parent / "covid.csv"
+    return szDataFrame(keypath)

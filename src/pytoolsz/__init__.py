@@ -16,6 +16,9 @@
 # See the Mulan PSL v2 for more details.
 
 from pytoolsz.frame import szDataFrame
+from pytoolsz.pretools import markdown_print
+
+from datasets import iris
 
 def version() -> str:
     version_txt = [
@@ -25,3 +28,7 @@ def version() -> str:
     ]
     return "\n".join(version_txt)
 
+if __name__ == "__main__":
+    print(version())
+    markdown_print(iris.NOTE)
+    print(iris.data())
