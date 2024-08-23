@@ -19,8 +19,6 @@ from pathlib import Path
 from pytoolsz.frame import DataFrame,zipreader
 from collections.abc import Mapping,Iterable
 from polars._typing import IntoExpr
-import pycountry as pct
-import gettext
 import polars as pl
 import polars.selectors as cs
 
@@ -36,6 +34,19 @@ DATANAMES = ["表格数据","图表数据","总计"]
 
 COMPARENAME = "（比较对象）"
 
+SUPPLEMENTAL = pl.from_dict(
+    {
+        "name_short": ["(未知)"],
+        "name_official": ["(未知)"],
+        "regex": ["(未知)"],
+        "ISO2": ["ZZ"],
+        "ISO3": [ "ZZZ"],
+    }
+)
+
+def youtube_datetime():
+    pass
+
 def read_YouTube_zipdata(tarName:str, between_date:list[str], channelName:str,
                            dataName:str, rootpath:Path|None = None, 
                            lastnum:bool|int = False,
@@ -44,6 +55,10 @@ def read_YouTube_zipdata(tarName:str, between_date:list[str], channelName:str,
     读取下载的YouTube数据。
     通常YouTube数据下载后会被压缩到zip文件中，并包含多个数据csv文件。
     """
+    if tarName not in TARGETNAMES :
+        raise ValueError("This tarName is not supported!")
+    if dataName not in DATANAMES :
+        raise ValueError("This dataName must be in {}".format(DATANAMES))
     if isinstance(lastnum, bool) :
         plus_str = " (1)" if lastnum else ""
     else :
@@ -78,22 +93,4 @@ def read_multiChannel(tarName:str, between_date:list[str], channelNames:list[str
                     data = data.group_by(key).agg(value)
     return data
 
-def alpha2_Chinese(code2:str) -> str:
-    """
-    转换国家代码iso3166-alpha2代码为中文名称。
-    """
-    try:
-        if code2 == "总计":
-            res = code2
-        elif code2 == "ZZ" :
-            res = "(未知)"
-        elif code2 == "XK" :
-            res = "科索沃"
-        else :
-            coun = pct.countries.get(alpha_2 = code2)
-            translator = gettext.translation('iso3166-1', pct.LOCALES_DIR, languages=['zh'])
-            translator.install()
-            res = translator.gettext(coun.name)
-        return (("中国"+res) if res in ["香港","澳门"] else res)
-    except:
-        raise ValueError("无法识别的国家代码：{}".format(code2))
+

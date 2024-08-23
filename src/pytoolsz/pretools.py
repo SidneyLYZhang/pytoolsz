@@ -22,10 +22,12 @@ from rich.markdown import Markdown
 from rich.console import Console
 from decimal import Decimal,ROUND_HALF_UP
 from collections.abc import Iterable
+import pycountry as pct
 
-
+import pandas as pd
 import numpy as np
-
+import country_converter as coco
+import gettext
 import shutil
 import re
 
@@ -60,9 +62,6 @@ def convert_suffix(file:str, to:str = "csv") -> None :
         func = getattr(data, "write_{}".format(to), data.write_csv)
         func(file_path.with_suffix('.'+to))
     print("converted successfully!")
-
-def youtube_datetime():
-    pass
 
 def around_right(nums:Number|None, keep_n:int = 2, 
                  null_na_handle:bool|float = False,
@@ -102,3 +101,58 @@ def markdown_print(text:str) -> None:
     """
     console = Console()
     console.print(Markdown(text))
+
+def local_name(code:str, local:str = "zh", not_found:str|None = None ) -> str:
+    """
+    转换国家代码为指定语言的国家名称。
+    """
+    if code.upper() in ["XK","XKS"] :
+        return "科索沃" if local=="zh" else "Kosovo"
+    arg = {"alpha_2":code} if len(code) == 2 else {"alpha_3":code}
+    contry = pct.countries.get(**arg)
+    if contry is None :
+        return (code if not_found is None else not_found)
+    name = contry.name
+    translator = gettext.translation('iso3166-1', pct.LOCALES_DIR, languages=[local])
+    translator.install()
+    res = translator.gettext(name)
+    res = ("中国"+res) if res in ["香港","澳门"] else res
+    res = (res + " ,China") if res in ["Macao","Hong Kong","Hongkong","Macau"] else res
+    return res
+
+def convert_country_code(code:str|Iterable, to:str = "name_zh",
+                         additional_data:pd.DataFrame|None = None,
+                         not_found:str|None = None,
+                         use_regex:bool = False) -> str|list[str] :
+    """
+    转换各类国家代码，到指定类型。
+    """
+    SRCS_trans = {
+         "alpha_2":"ISO2", "alpha_3":"ISO3", "numeric":"ISOnumeric",
+         "ISO":"ISOnumeric", "name":"name_short"}
+    if re.match(r"^name_.", to) :
+        langu = to.split("_")[1]
+        SRCS_trans = {**SRCS_trans, **{to:"ISO3"}}
+    else:
+        langu = None
+    SRCS = ['APEC', 'BASIC', 'BRIC', 'CC41', 'CIS', 'Cecilia2050', 'Continent_7',
+            'DACcode', 'EEA', 'EU', 'EU12', 'EU15', 'EU25', 'EU27', 'EU27_2007',
+            'EU28', 'EURO', 'EXIO1', 'EXIO1_3L', 'EXIO2', 'EXIO2_3L', 'EXIO3',
+            'EXIO3_3L', 'Eora', 'FAOcode', 'G20', 'G7', 'GBDcode', 'GWcode', 'IEA',
+            'IMAGE', 'IOC', 'ISO2', 'ISO3', 'ISOnumeric', 'MESSAGE', 'OECD',
+            'REMIND', 'Schengen', 'UN', 'UNcode', 'UNmember', 'UNregion', 'WIOD',
+            'ccTLD', 'continent', 'name_official', 'name_short', 'obsolete', 'regex']
+    if to not in (list(SRCS_trans.keys())+SRCS) :
+        raise ValueError("This value `{}` for `to` is not supported !".format(to))
+    converter = coco.CountryConverter(additional_data=additional_data)
+    tto = SRCS_trans[to] if to in SRCS_trans.keys() else to
+    kargs = { "names" : code, "to" : tto, "not_found" : not_found }
+    if use_regex :
+        kargs = {**kargs, **{"src":'regex'}}
+    res = converter.convert(**kargs)
+    if langu is not None :
+        if isinstance(res, str) :
+            res = local_name(res, local=langu,not_found=not_found)
+        else :
+            res = [local_name(x, local=langu,not_found=not_found) for x in res]
+    return res
