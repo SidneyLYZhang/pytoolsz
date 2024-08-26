@@ -15,10 +15,18 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
-from pytoolsz.frame import szDataFrame
-from pytoolsz.pretools import markdown_print
+from pytoolsz.frame import (
+    szDataFrame,
+    just_load,
+    zipreader
+)
+from datasets import (
+    iris,
+    covid,
+    tstest
+)
+import pytoolsz.pretools as utils
 
-from datasets import iris
 
 def version() -> str:
     version_txt = [
@@ -29,6 +37,7 @@ def version() -> str:
     return "\n".join(version_txt)
 
 if __name__ == "__main__":
+    from pytoolsz.pretools import markdown_print
     print(version())
     markdown_print(iris.NOTE)
     print(iris.data())

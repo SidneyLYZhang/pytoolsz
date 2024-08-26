@@ -17,6 +17,7 @@
 
 import datasets.iris as iris
 import datasets.covid as covid
+import datasets.tstest as tstest
 from pytoolsz.pretools import markdown_print
 
 if __name__ == "__main__":

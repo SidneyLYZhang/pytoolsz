@@ -16,9 +16,11 @@
 # See the Mulan PSL v2 for more details.
 
 from pathlib import Path
-from pytoolsz.frame import DataFrame,zipreader
+from pytoolsz.frame import szDataFrame,zipreader
+from pytoolsz.pretools import quick_date
 from collections.abc import Mapping,Iterable
 from polars._typing import IntoExpr
+
 import polars as pl
 import polars.selectors as cs
 
@@ -44,13 +46,20 @@ SUPPLEMENTAL = pl.from_dict(
     }
 )
 
-def youtube_datetime():
-    pass
+def youtube_datetime(keydate:str, seq:str|None = None, daily:bool = False,
+                     dateformat:str|None = None) -> tuple[str]|list[tuple[str]]:
+    if seq is None :
+        listDatas = [quick_date(keydate,sformat=dateformat)]
+    else:
+        listDatas = keydate.sqlit(seq)
+        listDatas = [quick_date(x,sformat=dateformat) for x in listDatas]
+        
+
 
 def read_YouTube_zipdata(tarName:str, between_date:list[str], channelName:str,
                            dataName:str, rootpath:Path|None = None, 
                            lastnum:bool|int = False,
-                           compare:bool = False) -> DataFrame:
+                           compare:bool = False) -> szDataFrame:
     """
     读取下载的YouTube数据。
     通常YouTube数据下载后会被压缩到zip文件中，并包含多个数据csv文件。
@@ -74,7 +83,7 @@ def read_multiChannel(tarName:str, between_date:list[str], channelNames:list[str
                       rootpath:Path|None = None,
                       compare:bool = False, 
                       group_by:str|Mapping[str,IntoExpr|Iterable[IntoExpr]|Mapping[str,IntoExpr]]|None = None
-                    ) -> DataFrame:
+                    ) -> szDataFrame:
     data = []
     for chs in channelNames :
         data.append(read_YouTube_zipdata(tarName, between_date, chs, lastnum, 

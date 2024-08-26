@@ -22,8 +22,9 @@ from rich.markdown import Markdown
 from rich.console import Console
 from decimal import Decimal,ROUND_HALF_UP
 from collections.abc import Iterable
-import pycountry as pct
 
+import pendulum as pdl
+import pycountry as pct
 import pandas as pd
 import numpy as np
 import country_converter as coco
@@ -91,9 +92,12 @@ def around_right(nums:Number|None, keep_n:int = 2,
         middleNum = np.around(tNum, decimals=(keep_n+4))
         return np.around(middleNum, decimals=keep_n)
 
-def round(numbs:Iterable) -> Iterable[float] :
-    
-    pass
+def round(numbs:Iterable,n:int = 2,
+          null_na_handle:bool|float = False) -> list[float] :
+    res = [around_right(x, keep_n=n, 
+                        null_na_handle=null_na_handle,
+                        precise=True) for x in numbs]
+    return res
 
 def markdown_print(text:str) -> None:
     """
@@ -156,3 +160,15 @@ def convert_country_code(code:str|Iterable, to:str = "name_zh",
         else :
             res = [local_name(x, local=langu,not_found=not_found) for x in res]
     return res
+
+def quick_date(date:str|None = None, sformat:str|None = None, 
+               tz:str|None = None) -> pdl.DateTime :
+    """
+    快速处理日期文字，或生成今日日期。
+    """
+    if date is None :
+        return pdl.now(tz = tz)
+    if sformat :
+        return pdl.from_format(date, sformat, tz=tz)
+    else:
+        return pdl.parse(date, tz = tz)
