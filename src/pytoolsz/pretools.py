@@ -167,8 +167,49 @@ def quick_date(date:str|None = None, sformat:str|None = None,
     快速处理日期文字，或生成今日日期。
     """
     if date is None :
-        return pdl.now(tz = tz)
+        res = pdl.now()
+        res = res.in_timezone(tz = tz)
+        return res
     if sformat :
         return pdl.from_format(date, sformat, tz=tz)
     else:
         return pdl.parse(date, tz = tz)
+
+class compression(object):
+    """
+    快捷文件压缩解压缩。
+    """
+    MODES = ['7z','zip']
+    LEVELSTRING = {"high":9,"normal":5,"low":1}
+    def __init__(self, mode:str = "7z",
+                 password:str|None = None,
+                 level:str|int = 9) -> None:
+        if mode not in self.MODES :
+            raise ValueError("mode must be in {}".format(self.MODES))
+        if isinstance(level, str) :
+            if level not in self.LEVELSTRING.keys() :
+                raise ValueError("level must be in {}".format(self.LEVELSTRING.keys()))
+            else:
+                self.__level = self.LEVELSTRING[level]
+        else :
+            self.__level = level
+        self.__mode = mode
+        self.__password = password
+    def compress(self, cfilename:str, 
+                 src:str|Path|list[str|Path] = '.', 
+                 dst:str|Path = '.') -> None :
+        """
+        压缩文件。
+        cfilename:压缩后的文件名。
+        src:源文件路径。
+        dst:目标文件路径。
+        """
+        pass
+    def extract(self, src:str|Path, dst:str|Path) -> None :
+        pass
+    def get_files(self, src:str|Path) -> list[str] :
+        pass
+    def append_file(self, src:str|Path, dst:str|Path) -> None :
+        pass
+    def extract_onefile(self, src:str|Path, dst:str|Path) -> None :
+        pass
