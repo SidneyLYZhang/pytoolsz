@@ -20,11 +20,13 @@ from pytoolsz.frame import szDataFrame,zipreader
 from pytoolsz.pretools import quick_date
 from collections.abc import Mapping,Iterable
 from polars._typing import IntoExpr
+from pendulum import interval
 
+import re
 import polars as pl
 import polars.selectors as cs
 
-
+__all__ = ["read_YouTube_zipdata","read_multiChannel"]
 
 TARGETNAMES = ["频道","内容","流量来源","地理位置","观看者年龄","观看者性别","日期","收入来源",
               "订阅状态","订阅来源","内容类型","播放列表","设备类型","广告类型","交易类型",
@@ -49,11 +51,52 @@ SUPPLEMENTAL = pl.from_dict(
 def youtube_datetime(keydate:str, seq:str|None = None, daily:bool = False,
                      dateformat:str|None = None) -> tuple[str]|list[tuple[str]]:
     if seq is None :
-        listDatas = [quick_date(keydate,sformat=dateformat)]
+        listDatas = quick_date(keydate,sformat=dateformat)
+        is_month = True if re.match(r"\d{4}[/-]?\d{2}", keydate) else False
     else:
         listDatas = keydate.sqlit(seq)
         listDatas = [quick_date(x,sformat=dateformat) for x in listDatas]
-        
+        is_month = [
+            (True if re.match(r"\d{4}[/-]?\d{2}", x) else False)
+            for x in listDatas
+        ]
+    if daily :
+        res = []
+        if isinstance(is_month, bool) :
+            interval = interval(start, end)
+    else :
+        if isinstance(is_month, bool) :
+            if is_month :
+                res = (listDatas.start_of("month"),
+                       listDatas.end_of("month").add(days=1))
+            else :
+                res = (listDatas.start_of("day"),
+                       listDatas.end_of("day").add(days=1))
+        else :
+            res = []
+            if str(is_month).count("False") % 2 :
+                for i in range(len(is_month)) :
+                    if is_month[i] :
+                        res.append((listDatas[i].start_of("month"),
+                                    listDatas[i].end_of("month").add(days=1)))
+                    else :
+                        res.append((listDatas[i].start_of("day"),
+                                    listDatas[i].end_of("day").add(days=1)))
+            else :
+                dn = 0
+                for i in range(len(is_month)) :
+                    if is_month[i] :
+                        res.append((listDatas[i].start_of("month"),
+                                    listDatas[i].end_of("month").add(days=1)))
+                    else :
+                        if dn % 2 == 0 :
+                            res.append((listDatas[i],
+                                        listDatas[i+1].add(days=1)))
+                            dn += 1
+                        else :
+                            dn += 1
+    return res
+                    
 
 
 def read_YouTube_zipdata(tarName:str, between_date:list[str], channelName:str,
@@ -102,4 +145,6 @@ def read_multiChannel(tarName:str, between_date:list[str], channelNames:list[str
                     data = data.group_by(key).agg(value)
     return data
 
+if __name__ == "__main__":
+    print("Hi buddy!")
 

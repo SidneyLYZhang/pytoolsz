@@ -24,6 +24,7 @@ from tempfile import TemporaryDirectory
 from typing import Self
 from rich import print
 
+__all__ = ["getreader","just_load","szDataFrame","zipreader"]
 
 def getreader(dirfile:Path|str, used_by:str|None = None):
     if used_by is None :
@@ -46,6 +47,13 @@ def just_load(filepath:str|Path, engine:str = "polars",
         return res.to_pandas() if engine == "pandas" else res
 
 class szDataFrame(object):
+    """
+    简单的数据处理。不提供超大数据集的惰性加载。
+    提供常见的数据处理方法，包括：
+    1. 时间序列处理
+    2. 训练/测试数据处理
+    3. 数据转换
+    """
     __ENGINES = ["polars","pandas"]
     def __init__(self, filepath:str|None, engine:str = "polars", 
                  from_data:pl.DataFrame|pd.DataFrame|None = None, **kwgs) -> None:
@@ -84,6 +92,8 @@ class szDataFrame(object):
         return self.__data if type == "polars" else self.__data.to_pandas()
     def convert(self, to:str) -> any:
         funx = getattr(self.__data, "to_{}".format(to), None)
+        if to == "polars" :
+            return self.__data
         if funx is None:
             raise ValueError("Don't have this convert method!")
         return funx()
@@ -110,5 +120,5 @@ def zipreader(zipFilepath:Path|str, subFile:str, **kwgs) -> szDataFrame:
 if __name__ == "__main__":
     rootpath = Path(__file__).absolute().parent.parent
     data = zipreader(rootpath/"datasets/iris/iris.zip",
-                     "iris.data")
-    print(data)
+                     "iris.data", has_header = False)
+    print(data.convert("pandas"))

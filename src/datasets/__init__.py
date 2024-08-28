@@ -18,3 +18,5 @@
 import datasets.iris as iris
 import datasets.covid as covid
 import datasets.tstest as tstest
+
+__all__ = ["iris", "covid", "tstest"]

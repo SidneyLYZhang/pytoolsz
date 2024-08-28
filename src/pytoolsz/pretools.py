@@ -30,7 +30,14 @@ import numpy as np
 import country_converter as coco
 import gettext
 import shutil
+import zipfile
+import py7zr
 import re
+import os
+
+__all__ = ["covert_macadress","convert_suffix","around_right","round",
+           "markdown_print","local_name","convert_country_code",
+           "quick_date","compression"]
 
 def covert_macadress(macadress:str, upper:bool = True) -> str:
     """
@@ -170,31 +177,79 @@ def quick_date(date:str|None = None, sformat:str|None = None,
         res = pdl.now()
         res = res.in_timezone(tz = tz)
         return res
+    if re.match(r"^\d{0,4}\.?\d{1,2}\.\d{1,2}$", date) :
+        if date.count('.') == 2 :
+            dformat = "YYYY.M.D"
+        else :
+            dformat = "M.D"
+        return pdl.from_format(date, dformat, tz=tz)
+    if re.match(r"^\d{4}/?\d{2}$", date) :
+        if '/' in date :
+            dformat = "YYYY/MM"
+        else:
+            dformat = "YYYYMM"
+        return pdl.from_format(date, dformat, tz=tz)
     if sformat :
         return pdl.from_format(date, sformat, tz=tz)
     else:
         return pdl.parse(date, tz = tz)
+
+def _get_extname(name:str|Path) -> str :
+    txt = name if isinstance(name, str) else name.name
+    return txt.split(".")[-1]
 
 class compression(object):
     """
     快捷文件压缩解压缩。
     """
     MODES = ['7z','zip']
-    LEVELSTRING = {"high":9,"normal":5,"low":1}
+    __all__ = ["compress","extract","get_filenames",
+               "append_file", "extract_file"]
     def __init__(self, mode:str = "7z",
-                 password:str|None = None,
-                 level:str|int = 9) -> None:
+                 password:str|None = None, 
+                 keep_data:bool = True) -> None:
         if mode not in self.MODES :
             raise ValueError("mode must be in {}".format(self.MODES))
-        if isinstance(level, str) :
-            if level not in self.LEVELSTRING.keys() :
-                raise ValueError("level must be in {}".format(self.LEVELSTRING.keys()))
-            else:
-                self.__level = self.LEVELSTRING[level]
-        else :
-            self.__level = level
+        self.__keep_data = keep_data
         self.__mode = mode
+        if password :
+            if mode == 'zip' :
+                print("`zip` mode does not support encryption compression packaging!\n\n")
+            else:
+                txt = ["Encryption is performed using the AES-256 algorithm.",
+                    "Compression algorithms generally do not support high-security encryption.",
+                    "If a secure encryption scheme is needed,",
+                    "please use a dedicated encryption program."]
+                print("\n".join(txt))
         self.__password = password
+    def _do7zcompress(self, filename:str, src:list[str|Path]) -> None :
+        with py7zr.SevenZipFile(filename, 'w', dereference=True, 
+                                header_encryption = True, 
+                                password = self.__password) as archive:
+            for xf in src:
+                if Path(xf).is_dir() :
+                    archive.writeall(xf)
+                else :
+                    archive.write(xf)
+                if not self.__keep_data :
+                    try :
+                        os.remove(xf)
+                    except :
+                        shutil.rmtree(xf)
+    def _dozipcompress(self, filename:str, src:list[str|Path]) -> None :
+        with zipfile.ZipFile(filename, 'w', compression=zipfile.ZIP_BZIP2,
+                             compresslevel = 9) as archive:
+            for xf in src:
+                if Path(xf).is_dir() :
+                    for xfi in Path(xf).glob('**/*.*'):
+                        archive.write(xfi)
+                else :
+                    archive.write(xf)
+                if not self.__keep_data :
+                    try :
+                        os.remove(xf)
+                    except :
+                        shutil.rmtree(xf)
     def compress(self, cfilename:str, 
                  src:str|Path|list[str|Path] = '.', 
                  dst:str|Path = '.') -> None :
@@ -204,12 +259,106 @@ class compression(object):
         src:源文件路径。
         dst:目标文件路径。
         """
-        pass
+        notChange = isinstance(src, list)
+        soures = src if notChange else [src]
+        tarPath = Path(dst)
+        if tarPath.is_dir() :
+            if not tarPath.exists() :
+                tarPath.mkdir(parents=True)
+        else :
+            raise ValueError("dst must be a directory!")
+        if not notChange :
+            oriPath = os.getcwd()
+            switchPath = Path(src).absolute().parent
+            os.chdir(switchPath)
+        xfname = '.'.join([cfilename, self.__mode])
+        if self.__mode == '7z' :
+            self._do7zcompress(tarPath/xfname, soures)
+        else :
+            self._dozipcompress(tarPath/xfname, soures)
+        if not notChange :
+            os.chdir(oriPath)
     def extract(self, src:str|Path, dst:str|Path) -> None :
-        pass
-    def get_files(self, src:str|Path) -> list[str] :
-        pass
+        """
+        解压缩文件。
+        src:源文件路径。
+        dst:目标文件路径。
+        """
+        self.__mode = _get_extname(src)
+        if self.__mode == '7z' :
+            with py7zr.SevenZipFile(src, 'r',
+                                    password = self.__password) as archive:
+                archive.extractall(path=dst)
+        else:
+            with zipfile.ZipFile(src, 'r') as archive:
+                archive.extractall(path=dst, pwd=self.__password)
+    def get_filenames(self, src:str|Path) -> list[str] :
+        """
+        获取压缩包内的文件列表。
+        src:源文件路径。
+        """
+        self.__mode = _get_extname(src)
+        if self.__mode == '7z' :
+            with py7zr.SevenZipFile(src, 'r',
+                                    password = self.__password) as archive:
+                return archive.getnames()
+        else:
+            with zipfile.ZipFile(src, 'r') as archive:
+                if self.__password :
+                    archive.setpassword(self.__password)
+                return archive.namelist()
     def append_file(self, src:str|Path, dst:str|Path) -> None :
-        pass
-    def extract_onefile(self, src:str|Path, dst:str|Path) -> None :
-        pass
+        """
+        追加文件到压缩包。
+        src:待补充压缩的文件路径。
+        dst:目标压缩文件路径。
+        """
+        self.__mode = _get_extname(dst)
+        if self.__mode == '7z' :
+            with py7zr.SevenZipFile(dst, 'a', dereference=True,
+                                    header_encryption = True,
+                                    password = self.__password) as archive:
+                if Path(src).is_dir() :
+                    archive.writeall(src)
+                else :
+                    archive.write(src)
+        else :
+            with zipfile.ZipFile(dst, 'a') as archive:
+                if self.__password :
+                    archive.setpassword(self.__password)
+                if Path(src).is_dir() :
+                    for xfi in Path(src).glob('**/*.*'):
+                        archive.write(xfi)
+                else :
+                    archive.write(src)
+        if not self.__keep_data :
+            try :
+                os.remove(src)
+            except :
+                shutil.rmtree(src)
+    def extract_file(self, targets:str|list[str], src:str|Path, 
+                     dst:str|Path = '.') -> None :
+        """
+        提取压缩包内的文件。
+        targets:待提取的文件名。
+        src:源压缩文件路径。
+        dst:加压目标文件路径。
+        """
+        self.__mode = _get_extname(src)
+        output = Path(dst)
+        if output.is_dir() :
+            if not output.exists() :
+                output.mkdir(parents=True)
+        else :
+            raise ValueError("dst must be a directory!")
+        if self.__mode == '7z' :
+            with py7zr.SevenZipFile(src, 'r',
+                                    password = self.__password) as archive:
+                archive.extract(targets=targets, path=output, recursive=True)
+        else :
+            with zipfile.ZipFile(src, 'r') as archive:
+                if isinstance(targets, str) :
+                    archive.extract(targets, path=output, pwd=self.__password)
+                else :
+                    for xfi in targets:
+                        archive.extract(xfi, path=output, pwd=self.__password)

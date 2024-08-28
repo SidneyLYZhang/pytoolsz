@@ -16,15 +16,12 @@
 # See the Mulan PSL v2 for more details.
 
 from pytoolsz.frame import (
-    szDataFrame,
+    getreader,
     just_load,
+    szDataFrame,
     zipreader
 )
-from datasets import (
-    iris,
-    covid,
-    tstest
-)
+import datasets
 import pytoolsz.pretools as utils
 
 
