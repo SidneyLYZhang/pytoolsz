@@ -194,6 +194,25 @@ def quick_date(date:str|None = None, sformat:str|None = None,
     else:
         return pdl.parse(date, tz = tz)
 
+def get_interval_dates(start:str|pdl.DateTime, 
+                       end:str|pdl.DateTime, 
+                       gap:str|None = None, limit_gap:bool = False
+                      ) -> list[pdl.DateTime]|list[tuple[pdl.DateTime]] :
+    """
+    生成日期区间列表。
+    """
+    tupRange = gap.split(" ") if gap else ["days"]
+    tupRange.reverse()
+    sD = quick_date(start) if isinstance(start, str) else start
+    eD = quick_date(end) if isinstance(end, str) else end
+    listDates = [i for i in pdl.interval(sD,eD).range(*tupRange)]
+    if gap is None :
+        return listDates
+    else :
+        []
+
+
+
 def _get_extname(name:str|Path) -> str :
     txt = name if isinstance(name, str) else name.name
     return txt.split(".")[-1]

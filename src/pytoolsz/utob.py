@@ -49,13 +49,23 @@ SUPPLEMENTAL = pl.from_dict(
 )
 
 def youtube_datetime(keydate:str, seq:str|None = None, daily:bool = False,
-                     dateformat:str|None = None) -> tuple[str]|list[tuple[str]]:
+                     dateformat:str|None = None, in_USA:bool = False,
+                     handle_oneday:str|None = None,
+                     handle_oneday_mode:str = "near") -> tuple[str]|list[tuple[str]]:
+    """
+    针对常见的YouTube时间数据需求进行处理。
+    """
+    tz = "America/Indianapolis" if in_USA else None
+    if handle_oneday not in ["day", "week", "month", "year", None]:
+        raise ValueError("handle_oneday must be in ['day', 'week','month', 'year', None]")
+    if handle_oneday_mode not in ["near", "last"]:
+        raise ValueError("handle_oneday_mode must be in ['near', 'last']")
     if seq is None :
-        listDatas = quick_date(keydate,sformat=dateformat)
+        listDatas = quick_date(keydate,sformat=dateformat,tz=tz)
         is_month = True if re.match(r"\d{4}[/-]?\d{2}", keydate) else False
     else:
         listDatas = keydate.sqlit(seq)
-        listDatas = [quick_date(x,sformat=dateformat) for x in listDatas]
+        listDatas = [quick_date(x,sformat=dateformat,tz=tz) for x in listDatas]
         is_month = [
             (True if re.match(r"\d{4}[/-]?\d{2}", x) else False)
             for x in listDatas
@@ -63,38 +73,42 @@ def youtube_datetime(keydate:str, seq:str|None = None, daily:bool = False,
     if daily :
         res = []
         if isinstance(is_month, bool) :
-            interval = interval(start, end)
+            interval = interval(listDatas.start_of("month"), 
+                                listDatas.end_of("month"))
     else :
         if isinstance(is_month, bool) :
             if is_month :
                 res = (listDatas.start_of("month"),
                        listDatas.end_of("month").add(days=1))
             else :
-                res = (listDatas.start_of("day"),
-                       listDatas.end_of("day").add(days=1))
+                if handle_oneday is None :
+                    res = (listDatas.start_of("day"),
+                           listDatas.end_of("day").add(days=1))
+                elif handle_oneday == "day" :
+                    res = (listDatas.subtract(days=1),listDatas)
+                elif handle_oneday == "week" :
+                    res = (listDatas.subtract(weeks=1),listDatas)
+                elif handle_oneday == "month" :
+                    res = (listDatas.subtract(months=1),listDatas)
+                else :
+                    res = (listDatas.subtract(years=1),listDatas)
         else :
             res = []
-            if str(is_month).count("False") % 2 :
-                for i in range(len(is_month)) :
-                    if is_month[i] :
-                        res.append((listDatas[i].start_of("month"),
-                                    listDatas[i].end_of("month").add(days=1)))
+            dn = 0
+            for i in range(len(is_month)) :
+                if is_month[i] :
+                    res.append((listDatas[i].start_of("month"),
+                                listDatas[i].end_of("month").add(days=1)))
+                else :
+                    if dn % 2 == 0 :
+                        res.append((listDatas[i],
+                                    listDatas[i+1].add(days=1)))
+                        dn += 1
                     else :
-                        res.append((listDatas[i].start_of("day"),
-                                    listDatas[i].end_of("day").add(days=1)))
-            else :
-                dn = 0
-                for i in range(len(is_month)) :
-                    if is_month[i] :
-                        res.append((listDatas[i].start_of("month"),
-                                    listDatas[i].end_of("month").add(days=1)))
-                    else :
-                        if dn % 2 == 0 :
+                        if i == len(is_month) - 1 :
                             res.append((listDatas[i],
-                                        listDatas[i+1].add(days=1)))
-                            dn += 1
-                        else :
-                            dn += 1
+                                        listDatas[i].add(days=1)))
+                        dn += 1
     return res
                     
 
