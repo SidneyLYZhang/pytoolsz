@@ -202,16 +202,17 @@ def get_interval_dates(start:str|pdl.DateTime,
     生成日期区间列表。
     """
     tupRange = gap.split(" ") if gap else ["days"]
-    tupRange.reverse()
+    tupRange = [tupRange[-1], int(tupRange[0])]
     sD = quick_date(start) if isinstance(start, str) else start
     eD = quick_date(end) if isinstance(end, str) else end
     listDates = [i for i in pdl.interval(sD,eD).range(*tupRange)]
     if gap is None :
         return listDates
     else :
-        []
-
-
+        if limit_gap :
+            return [(listDates[i],listDates[i+1]) for i in range(len(listDates)-1)]
+        else :
+            []
 
 def _get_extname(name:str|Path) -> str :
     txt = name if isinstance(name, str) else name.name
