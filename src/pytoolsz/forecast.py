@@ -88,21 +88,24 @@ def auto_orders(data:pd.Series, diff_max:int = 40,
                 bT = ix[1]
     return ((p,d,q),(bP,bD,bQ,int(s)),bT)
 
-class forecast(object):
-    MODES = ["arima","prophet","patchtst","autogluon"]
+class simforecast(object):
+    """
+    sim(ple) forecast
+    """
+    MODES = ["arima","prophet"]
     def __init__(self, mode:str = "prophet", 
                  orders:tuple|bool = False, use_log:bool = False, 
                  **kwgs) -> None:
         """
         预测集合 - 
-            目前支持的模型有：ARIMA，prophet，patchtst，autogluon。
+            目前支持的模型有：ARIMA，prophet。
         参数 : 
         mode - 选择预测模型
         diff - 用于差分选择，如果为True，则进行自动选择差分，默认为False；
                指定为一个整数值，则按此进行指定的差分阶数进行计算。
         """
-        if mode not in forecast.MODES:
-            raise ValueError("mode must be one of {}".format(forecast.MODES))
+        if mode not in simforecast.MODES:
+            raise ValueError("mode must be one of {}".format(simforecast.MODES))
         self.__mode = mode
         if isinstance(orders,bool):
             if orders :
@@ -132,5 +135,5 @@ class forecast(object):
     def plot(self, change_points:bool = False):
         pass
 
-def load_model(mpath:str|Path, mode:str = "prophet") -> forecast :
+def load_model(mpath:str|Path, mode:str = "prophet") -> simforecast :
     pass

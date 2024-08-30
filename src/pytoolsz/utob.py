@@ -17,7 +17,11 @@
 
 from pathlib import Path
 from pytoolsz.frame import szDataFrame,zipreader
-from pytoolsz.pretools import quick_date
+from pytoolsz.pretools import (
+    quick_date,
+    get_interval_dates, 
+    near_date,
+    last_date)
 from collections.abc import Mapping,Iterable
 from polars._typing import IntoExpr
 from pendulum import interval
@@ -50,48 +54,87 @@ SUPPLEMENTAL = pl.from_dict(
 
 def youtube_datetime(keydate:str, seq:str|None = None, daily:bool = False,
                      dateformat:str|None = None, in_USA:bool = False,
-                     handle_oneday:str|None = None,
-                     handle_oneday_mode:str = "near") -> tuple[str]|list[tuple[str]]:
+                     singleday_mode:str = "near") -> tuple[str]|list[tuple[str]]:
     """
     针对常见的YouTube时间数据需求进行处理。
     """
     tz = "America/Indianapolis" if in_USA else None
-    if handle_oneday not in ["day", "week", "month", "year", None]:
-        raise ValueError("handle_oneday must be in ['day', 'week','month', 'year', None]")
-    if handle_oneday_mode not in ["near", "last"]:
-        raise ValueError("handle_oneday_mode must be in ['near', 'last']")
+    if singleday_mode not in ["near", "near_week","near_month","near_year",
+                              "last_month","last_season","last_year"]:
+        raise ValueError("singleday_mode = {} is not supported!".format(singleday_mode))
     if seq is None :
         listDatas = quick_date(keydate,sformat=dateformat,tz=tz)
-        is_month = True if re.match(r"\d{4}[/-]?\d{2}", keydate) else False
+        is_month = True if re.match(r"^\d{4}[/-]?\d{2}$", keydate) else False
     else:
-        listDatas = keydate.sqlit(seq)
+        listDatas = keydate.split(seq)
         listDatas = [quick_date(x,sformat=dateformat,tz=tz) for x in listDatas]
         is_month = [
-            (True if re.match(r"\d{4}[/-]?\d{2}", x) else False)
-            for x in listDatas
+            (True if re.match(r"^\d{4}[/-]?\d{2}$", x) else False)
+            for x in keydate.split(seq)
         ]
     if daily :
         res = []
         if isinstance(is_month, bool) :
-            interval = interval(listDatas.start_of("month"), 
-                                listDatas.end_of("month"))
+            tmp = get_interval_dates(listDatas.start_of("month"), 
+                                     listDatas.end_of("month").add(days=1),
+                                     gap = "1 days", limit_gap = True)
+            res = [(x[0].format("YYYY-MM-DD"),x[1].format("YYYY-MM-DD"))
+                   for x in tmp]
+        else :
+            dn = 0
+            for i in range(len(is_month)) :
+                if is_month[i] :
+                    tmp = get_interval_dates(listDatas[i].start_of("month"), 
+                                     listDatas[i].end_of("month").add(days=1),
+                                     gap = "1 days", limit_gap = True)
+                    res.extend([(x[0].format("YYYY-MM-DD"),x[1].format("YYYY-MM-DD")) 
+                                for x in tmp])
+                else :
+                    if dn % 2 == 0 :
+                        if i == len(is_month)-1 :
+                            if "near" in singleday_mode :
+                                type_m = "day" if singleday_mode == "near" else singleday_mode.split("_")[1]
+                                ssd = near_date(keydate=listDatas[i],near_=type_m)
+                            else :
+                                type_m = singleday_mode.split("_")[1]
+                                ssd = last_date(keydate=listDatas[i], last_=type_m)
+                            tmp = get_interval_dates(ssd[0],ssd[1].add(days=1),
+                                        gap = "1 days", limit_gap = True)
+                        else:
+                            tmp = get_interval_dates(listDatas[i].start_of("day"), 
+                                        listDatas[i+1].end_of("day").add(days=1),
+                                        gap = "1 days", limit_gap = True)
+                        res.extend([(x[0].format("YYYY-MM-DD"),x[1].format("YYYY-MM-DD")) 
+                                for x in tmp])
+                        dn += 1
+                    else :
+                        if i == len(is_month) - 1 and dn > 2 :
+                            if "near" in singleday_mode :
+                                type_m = "day" if singleday_mode == "near" else singleday_mode.split("_")[1]
+                                sgday = near_date(keydate=listDatas[i],near_=type_m)
+                            else :
+                                type_m = singleday_mode.split("_")[1]
+                                sgday = last_date(keydate=listDatas[i], last_=type_m)
+                            tmp = get_interval_dates(sgday[0],sgday[1].add(days=1), 
+                                                     gap = "1 days", limit_gap = True)
+                            res.extend([(x[0].format("YYYY-MM-DD"),x[1].format("YYYY-MM-DD")) 
+                                for x in tmp])
+                        else :
+                            dn += 1
     else :
         if isinstance(is_month, bool) :
             if is_month :
                 res = (listDatas.start_of("month"),
                        listDatas.end_of("month").add(days=1))
             else :
-                if handle_oneday is None :
-                    res = (listDatas.start_of("day"),
-                           listDatas.end_of("day").add(days=1))
-                elif handle_oneday == "day" :
-                    res = (listDatas.subtract(days=1),listDatas)
-                elif handle_oneday == "week" :
-                    res = (listDatas.subtract(weeks=1),listDatas)
-                elif handle_oneday == "month" :
-                    res = (listDatas.subtract(months=1),listDatas)
+                if "near" in singleday_mode :
+                    type_m = "day" if singleday_mode == "near" else singleday_mode.split("_")[1]
+                    res = near_date(keydate=listDatas,near_=type_m)
                 else :
-                    res = (listDatas.subtract(years=1),listDatas)
+                    type_m = singleday_mode.split("_")[1]
+                    res = last_date(keydate=listDatas, last_=type_m)
+                res = (res[0], res[1].add(days=1))
+            res = (res[0].format("YYYY-MM-DD"),res[1].format("YYYY-MM-DD"))
         else :
             res = []
             dn = 0
@@ -101,17 +144,32 @@ def youtube_datetime(keydate:str, seq:str|None = None, daily:bool = False,
                                 listDatas[i].end_of("month").add(days=1)))
                 else :
                     if dn % 2 == 0 :
-                        res.append((listDatas[i],
-                                    listDatas[i+1].add(days=1)))
+                        if i == len(is_month)-1 :
+                            if "near" in singleday_mode :
+                                type_m = "day" if singleday_mode == "near" else singleday_mode.split("_")[1]
+                                ssd = near_date(keydate=listDatas[i],near_=type_m)
+                            else :
+                                type_m = singleday_mode.split("_")[1]
+                                ssd = last_date(keydate=listDatas[i], last_=type_m)
+                            res.append((ssd[0], ssd[1].add(days=1)))
+                        else:
+                            res.append((listDatas[i],
+                                        listDatas[i+1].add(days=1)))
                         dn += 1
                     else :
-                        if i == len(is_month) - 1 :
-                            res.append((listDatas[i],
-                                        listDatas[i].add(days=1)))
+                        if i == len(is_month) - 1 and dn > 2:
+                            if "near" in singleday_mode :
+                                type_m = "day" if singleday_mode == "near" else singleday_mode.split("_")[1]
+                                ssd = near_date(keydate=listDatas[i],near_=type_m)
+                            else :
+                                type_m = singleday_mode.split("_")[1]
+                                ssd = last_date(keydate=listDatas[i], last_=type_m)
+                            res.append((ssd[0], ssd[1].add(days=1)))
                         dn += 1
+            res = [(x[0].format("YYYY-MM-DD"),x[1].format("YYYY-MM-DD")) for x in res]
+    if isinstance(res, list) and len(res) == 1:
+        res = res[0]
     return res
-                    
-
 
 def read_YouTube_zipdata(tarName:str, between_date:list[str], channelName:str,
                            dataName:str, rootpath:Path|None = None, 

@@ -30,14 +30,12 @@ import numpy as np
 import country_converter as coco
 import gettext
 import shutil
-import zipfile
-import py7zr
 import re
-import os
+
 
 __all__ = ["covert_macadress","convert_suffix","around_right","round",
            "markdown_print","local_name","convert_country_code",
-           "quick_date","compression"]
+           "quick_date","near_date","last_date","get_interval_dates"]
 
 def covert_macadress(macadress:str, upper:bool = True) -> str:
     """
@@ -171,7 +169,7 @@ def convert_country_code(code:str|Iterable, to:str = "name_zh",
 def quick_date(date:str|None = None, sformat:str|None = None, 
                tz:str|None = None) -> pdl.DateTime :
     """
-    快速处理日期文字，或生成今日日期。
+    快速处理日期文字，或全默认则生成今日日期。
     """
     if date is None :
         res = pdl.now()
@@ -195,190 +193,66 @@ def quick_date(date:str|None = None, sformat:str|None = None,
         return pdl.parse(date, tz = tz)
 
 def get_interval_dates(start:str|pdl.DateTime, 
-                       end:str|pdl.DateTime, 
+                       end:str|pdl.DateTime, tz:str|None = None,
                        gap:str|None = None, limit_gap:bool = False
                       ) -> list[pdl.DateTime]|list[tuple[pdl.DateTime]] :
     """
     生成日期区间列表。
     """
-    tupRange = gap.split(" ") if gap else ["days"]
+    tupRange = gap.split(" ") if gap else ["1","days"]
     tupRange = [tupRange[-1], int(tupRange[0])]
-    sD = quick_date(start) if isinstance(start, str) else start
-    eD = quick_date(end) if isinstance(end, str) else end
+    sD = quick_date(start,tz=tz) if isinstance(start, str) else start
+    eD = quick_date(end,tz=tz) if isinstance(end, str) else end
     listDates = [i for i in pdl.interval(sD,eD).range(*tupRange)]
     if gap is None :
         return listDates
     else :
         if limit_gap :
-            return [(listDates[i],listDates[i+1]) for i in range(len(listDates)-1)]
+            return [(listDates[i],listDates[i+1]) 
+                    for i in range(len(listDates)-1)]
         else :
-            []
+            return [(listDates[i],
+                     listDates[i].add(**{tupRange[0]:(tupRange[1]-1)})) 
+                     for i in range(len(listDates))]
 
-def _get_extname(name:str|Path) -> str :
-    txt = name if isinstance(name, str) else name.name
-    return txt.split(".")[-1]
+def last_date(keydate:str|pdl.DateTime|None = None,
+              last_:str = "month",
+              tz:str|None = None) -> tuple[pdl.DateTime] :
+    """
+    计算上一个时间区间的函数。
+    last_ 只支持 "day","week","month","season","year"。
+        day：昨天
+        week：上周
+        month：上个月
+        season：上个季度
+        year：上一年
+    """
+    if last_ not in ["day","week","month","season","year"] :
+        raise ValueError("`last_` must be in ['day', 'week','month', 'season', 'year']")
+    pinDate = keydate if isinstance(keydate, pdl.DateTime) else quick_date(date=keydate,tz=tz)
+    if last_ == 'season' :
+        last_pin = pinDate.subtract(months=3)
+        for snx in [[1,2,3],[4,5,6],[7,8,9],[10,11,12]] :
+            if last_pin.month in snx :
+                res = (last_pin.on(last_pin.year, min(snx), 1).start_of("month"),
+                       last_pin.on(last_pin.year, max(snx), 1).end_of("month"))
+                return res
+    else :
+        last_pin = pinDate.subtract(**{(last_+"s"):1})
+        return (last_pin.start_of(last_),last_pin.end_of(last_))
 
-class compression(object):
+def near_date(keydate:str|pdl.DateTime|None = None,
+              near_:str = "day", nth:int = 1,
+              tz:str|None = None) -> tuple[pdl.DateTime] :
     """
-    快捷文件压缩解压缩。
+    计算之前的一段时间区间，可以是之前1天也可以是之前n天到前1天。
+    near_ 用于计算之前的周期单位。
+    nth 用于计算之前周期的跨度。
+    例如： "near_=day,nth=1"，代表昨天时间区间（默认计算昨天）。
     """
-    MODES = ['7z','zip']
-    __all__ = ["compress","extract","get_filenames",
-               "append_file", "extract_file"]
-    def __init__(self, mode:str = "7z",
-                 password:str|None = None, 
-                 keep_data:bool = True) -> None:
-        if mode not in self.MODES :
-            raise ValueError("mode must be in {}".format(self.MODES))
-        self.__keep_data = keep_data
-        self.__mode = mode
-        if password :
-            if mode == 'zip' :
-                print("`zip` mode does not support encryption compression packaging!\n\n")
-            else:
-                txt = ["Encryption is performed using the AES-256 algorithm.",
-                    "Compression algorithms generally do not support high-security encryption.",
-                    "If a secure encryption scheme is needed,",
-                    "please use a dedicated encryption program."]
-                print("\n".join(txt))
-        self.__password = password
-    def _do7zcompress(self, filename:str, src:list[str|Path]) -> None :
-        with py7zr.SevenZipFile(filename, 'w', dereference=True, 
-                                header_encryption = True, 
-                                password = self.__password) as archive:
-            for xf in src:
-                if Path(xf).is_dir() :
-                    archive.writeall(xf)
-                else :
-                    archive.write(xf)
-                if not self.__keep_data :
-                    try :
-                        os.remove(xf)
-                    except :
-                        shutil.rmtree(xf)
-    def _dozipcompress(self, filename:str, src:list[str|Path]) -> None :
-        with zipfile.ZipFile(filename, 'w', compression=zipfile.ZIP_BZIP2,
-                             compresslevel = 9) as archive:
-            for xf in src:
-                if Path(xf).is_dir() :
-                    for xfi in Path(xf).glob('**/*.*'):
-                        archive.write(xfi)
-                else :
-                    archive.write(xf)
-                if not self.__keep_data :
-                    try :
-                        os.remove(xf)
-                    except :
-                        shutil.rmtree(xf)
-    def compress(self, cfilename:str, 
-                 src:str|Path|list[str|Path] = '.', 
-                 dst:str|Path = '.') -> None :
-        """
-        压缩文件。
-        cfilename:压缩后的文件名。
-        src:源文件路径。
-        dst:目标文件路径。
-        """
-        notChange = isinstance(src, list)
-        soures = src if notChange else [src]
-        tarPath = Path(dst)
-        if tarPath.is_dir() :
-            if not tarPath.exists() :
-                tarPath.mkdir(parents=True)
-        else :
-            raise ValueError("dst must be a directory!")
-        if not notChange :
-            oriPath = os.getcwd()
-            switchPath = Path(src).absolute().parent
-            os.chdir(switchPath)
-        xfname = '.'.join([cfilename, self.__mode])
-        if self.__mode == '7z' :
-            self._do7zcompress(tarPath/xfname, soures)
-        else :
-            self._dozipcompress(tarPath/xfname, soures)
-        if not notChange :
-            os.chdir(oriPath)
-    def extract(self, src:str|Path, dst:str|Path) -> None :
-        """
-        解压缩文件。
-        src:源文件路径。
-        dst:目标文件路径。
-        """
-        self.__mode = _get_extname(src)
-        if self.__mode == '7z' :
-            with py7zr.SevenZipFile(src, 'r',
-                                    password = self.__password) as archive:
-                archive.extractall(path=dst)
-        else:
-            with zipfile.ZipFile(src, 'r') as archive:
-                archive.extractall(path=dst, pwd=self.__password)
-    def get_filenames(self, src:str|Path) -> list[str] :
-        """
-        获取压缩包内的文件列表。
-        src:源文件路径。
-        """
-        self.__mode = _get_extname(src)
-        if self.__mode == '7z' :
-            with py7zr.SevenZipFile(src, 'r',
-                                    password = self.__password) as archive:
-                return archive.getnames()
-        else:
-            with zipfile.ZipFile(src, 'r') as archive:
-                if self.__password :
-                    archive.setpassword(self.__password)
-                return archive.namelist()
-    def append_file(self, src:str|Path, dst:str|Path) -> None :
-        """
-        追加文件到压缩包。
-        src:待补充压缩的文件路径。
-        dst:目标压缩文件路径。
-        """
-        self.__mode = _get_extname(dst)
-        if self.__mode == '7z' :
-            with py7zr.SevenZipFile(dst, 'a', dereference=True,
-                                    header_encryption = True,
-                                    password = self.__password) as archive:
-                if Path(src).is_dir() :
-                    archive.writeall(src)
-                else :
-                    archive.write(src)
-        else :
-            with zipfile.ZipFile(dst, 'a') as archive:
-                if self.__password :
-                    archive.setpassword(self.__password)
-                if Path(src).is_dir() :
-                    for xfi in Path(src).glob('**/*.*'):
-                        archive.write(xfi)
-                else :
-                    archive.write(src)
-        if not self.__keep_data :
-            try :
-                os.remove(src)
-            except :
-                shutil.rmtree(src)
-    def extract_file(self, targets:str|list[str], src:str|Path, 
-                     dst:str|Path = '.') -> None :
-        """
-        提取压缩包内的文件。
-        targets:待提取的文件名。
-        src:源压缩文件路径。
-        dst:加压目标文件路径。
-        """
-        self.__mode = _get_extname(src)
-        output = Path(dst)
-        if output.is_dir() :
-            if not output.exists() :
-                output.mkdir(parents=True)
-        else :
-            raise ValueError("dst must be a directory!")
-        if self.__mode == '7z' :
-            with py7zr.SevenZipFile(src, 'r',
-                                    password = self.__password) as archive:
-                archive.extract(targets=targets, path=output, recursive=True)
-        else :
-            with zipfile.ZipFile(src, 'r') as archive:
-                if isinstance(targets, str) :
-                    archive.extract(targets, path=output, pwd=self.__password)
-                else :
-                    for xfi in targets:
-                        archive.extract(xfi, path=output, pwd=self.__password)
+    if near_ not in ["day","week","month","year"] :
+        raise ValueError("`near_` must be in ['day', 'week','month', 'year']")
+    pinDate = keydate if isinstance(keydate, pdl.DateTime) else quick_date(date=keydate,tz=tz)
+    res = (pinDate.subtract(**{near_+"s":nth}).start_of("day"),
+           pinDate.subtract(days=1).end_of("day"))
+    return res

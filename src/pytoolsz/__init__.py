@@ -23,6 +23,7 @@ from pytoolsz.frame import (
 )
 import datasets
 import pytoolsz.pretools as utils
+import pytoolsz.compress as compress
 
 
 def version() -> str:
@@ -33,8 +34,19 @@ def version() -> str:
     ]
     return "\n".join(version_txt)
 
+__all__ = [
+    "utils",
+    "compress",
+    "datasets",
+    "getreader",
+    "just_load",
+    "szDataFrame",
+    "zipreader",
+    "version"
+]
+
 if __name__ == "__main__":
     from pytoolsz.pretools import markdown_print
     print(version())
-    markdown_print(iris.NOTE)
-    print(iris.data())
+    markdown_print(datasets.iris.NOTE)
+    print(datasets.iris.data())
