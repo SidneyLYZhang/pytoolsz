@@ -22,13 +22,11 @@
 # 3. 拟合模型
 # 4. 预测
 # 传统来说，平稳与否是一个时间序列预测是否可行的标志。但现在也有很多手段可以在务虚平稳条件下进行预测。
-# 模型除了prophet、ARIMA，还有auto.gluon.ai和PatchTST。
+# 模型目前支持：prophet、ARIMA。
 # 这里提供预测所需要的各类方法。
 # 对模型的基础理解：
 # 1. ARIMA ：传统时序模型的基准模型，需要前序处理，并寻找平稳方案。
 # 2. prophet ：传统时序模型的集大成者，减少前序处理程度，并提供了更多添加属性，使时序预测更准确。
-# 3. PatchTST ：基于DNN的模型，是单纯神经网络方法优化的结果，在时间序列预测中也有较为优异的表现。
-# 4. auto.gluon.ai ：在预训练模型中表现出色，使用LLM类方法训练的Transformer模型。
 
 from itertools import product
 from pathlib import Path

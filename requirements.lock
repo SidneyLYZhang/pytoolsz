@@ -22,6 +22,8 @@ country-converter==1.2
     # via pytoolsz
 cycler==0.12.1
     # via matplotlib
+et-xmlfile==1.1.0
+    # via openpyxl
 filelock==3.15.4
     # via torch
 fonttools==4.53.1
@@ -68,6 +70,8 @@ numpy==2.1.0
     # via stanio
     # via statsmodels
     # via torchvision
+openpyxl==3.1.5
+    # via pytoolsz
 packaging==24.1
     # via matplotlib
     # via statsmodels

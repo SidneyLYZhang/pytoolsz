@@ -17,6 +17,7 @@ dependencies = [
     "pendulum>=3.0.0",
     "py7zr>=0.22.0",
     "pyarrow>=17.0.0",
+    "openpyxl>=3.1.5",
 ]
 requires-python = ">= 3.8"
 readme = "README.md"

@@ -24,6 +24,10 @@ from pytoolsz.frame import (
 import datasets
 import pytoolsz.pretools as utils
 import pytoolsz.compress as compress
+from pytoolsz.saveExcel import (
+    saveExcel,
+    transColname2Letter
+)
 
 
 def version() -> str:
@@ -42,6 +46,8 @@ __all__ = [
     "just_load",
     "szDataFrame",
     "zipreader",
+    "saveExcel",
+    "transColname2Letter",
     "version"
 ]
 
