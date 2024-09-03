@@ -396,6 +396,9 @@ class saveExcel(object):
 
 
 if __name__ == "__main__":
+    """
+    这是一个使用示例。
+    """
     data = pd.DataFrame({"a": [1,2,3], 
                          "b": [4,5,6],
                          "c": [7,8,9],

@@ -97,7 +97,7 @@ def around_right(nums:Number|None, keep_n:int = 2,
         middleNum = np.around(tNum, decimals=(keep_n+4))
         return np.around(middleNum, decimals=keep_n)
 
-def round(numbs:Iterable,n:int = 2,
+def round(numbs:Iterable, n:int = 2,
           null_na_handle:bool|float = False) -> list[float] :
     res = [around_right(x, keep_n=n, 
                         null_na_handle=null_na_handle,
