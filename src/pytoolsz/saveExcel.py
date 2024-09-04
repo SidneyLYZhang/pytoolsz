@@ -166,7 +166,7 @@ class saveExcel(object):
         if isinstance(sformat, dict):
             for icol in sformat.keys():
                 if icol in colist :
-                    cellist = ["{}{}".format(*x) for x in list(itertools.product(rolist, [icol]))]
+                    cellist = ["{}{}".format(*x) for x in list(itertools.product([icol], rolist))]
                     for cellname in cellist:
                         self.__ws[cellname].number_format = sformat[icol]
         else:
@@ -243,7 +243,7 @@ class saveExcel(object):
     def writeData(self, height:int = 33, col_crossline:int = 0,
                   font_type:dict|None = None, col_font_type:dict|None = None,
                   borde_type:dict|None = None, col_border_type:dict|None = None,
-                  numberformat:dict|None = None) -> None :
+                  numberformat:dict|str|None = None) -> None :
         """
         把数据按照格式要求写入Sheet表格。
         """
@@ -264,7 +264,7 @@ class saveExcel(object):
                          name_merge_cols:list[str]|None = None,
                          font_type:dict|None = None, 
                          borde_type:dict|None = None,
-                         numberformat:dict|None = None) -> None :
+                         numberformat:dict|str|None = None) -> None :
         if font_type :
             fontype = Font(**font_type["font"]) if "font" in font_type.keys() else Font(name='微软雅黑', 
                                                                                         size=11.5)
@@ -424,9 +424,10 @@ if __name__ == "__main__":
                                               "top":{"border_style":None}},
                                       "middle":{"top":{"border_style":None}},
                                       "right":{"right":{"border_style":"thick"},
-                                               "top":{"border_style":None}}})
+                                               "top":{"border_style":None}}},
+                          numberformat={"B":"0.00%","C":"0.00%","D":"0.00%","E":"0.00%"})
         wEmodel.writeSummaryData(
-            name_merge_cols=["a","b"],pass_cols=["e"],
+            name_merge_cols=["a","b"],pass_cols=["e"], numberformat="#,##0.00;-#,##0.00;-;@",
             font_type={"fill":{"patternType":"solid","fgColor":"00CCFFCC"}},
             borde_type={
                 "left":{"left":{"border_style":"thick"},

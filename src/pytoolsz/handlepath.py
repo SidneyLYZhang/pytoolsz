@@ -35,7 +35,8 @@ def checkFolders(folders:str|Path|list[str|Path],
     if mkdir :
         for i in range(len(givefolders)) :
             if not res[i] :
-                givefolders[i].mkdir(parents=True, exist_ok=True)
+                if givefolders[i] != Path("No Path") :
+                    givefolders[i].mkdir(parents=True, exist_ok=True)
     if output :
         if len(res) == 1 :
             return res[0]
@@ -65,6 +66,8 @@ def lastFile(folder:str|Path, filename:str,
     else :
         fixlast = "ctime" if last_ == "createtime" else last_
     attname = "st_{}".format(fixlast)
+    if len(findedfile) == 0 :
+        return Path("No Path")
     checkList = [getattr(x.stat(), attname) for x in findedfile]
     if mode == "desc" :
         cKdata = checkList.index(max(checkList))

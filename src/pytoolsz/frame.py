@@ -39,8 +39,11 @@ def getreader(dirfile:Path|str, used_by:str|None = None):
 def just_load(filepath:str|Path, engine:str = "polars", 
               used_by:str|None = None, **kwgs) -> pl.DataFrame|pd.DataFrame:
     """load file to DataFrame"""
-    rFunc = getreader(filepath, used_by)
-    res = rFunc(Path(filepath), **kwgs)
+    if filepath != Path("No Path") :
+        rFunc = getreader(filepath, used_by)
+        res = rFunc(Path(filepath), **kwgs)
+    else:
+        res = pl.DataFrame()
     if engine not in ["polars","pandas"]:
         raise ValueError("engine must be one of {}".format(["polars","pandas"]))
     else:

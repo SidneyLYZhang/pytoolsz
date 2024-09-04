@@ -71,7 +71,7 @@ def convert_suffix(file:str, to:str = "csv") -> None :
 
 def around_right(nums:Number|None, keep_n:int = 2, 
                  null_na_handle:bool|float = False,
-                 precise:bool = False) :
+                 precise:bool = True) :
     """
     用于更准确的四舍五入操作。
     对于None、Null或者NAN/NA等情况，可通过null_na_handle参数进行处理。
