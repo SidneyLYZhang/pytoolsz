@@ -24,7 +24,7 @@ from pytoolsz.pretools import (
     last_date)
 from collections.abc import Mapping,Iterable
 from polars._typing import IntoExpr
-from pendulum import interval
+from pendulum import interval, DateTime
 
 import re
 import polars as pl
@@ -51,6 +51,50 @@ SUPPLEMENTAL = pl.from_dict(
         "ISO3": [ "ZZZ"],
     }
 )
+
+def youtube_currentTime(unit:str = "month", bis_:str = "last",
+                        single:bool = False,
+                        to_string:bool|str = False
+                        ) -> tuple[str]|tuple[DateTime]|str|DateTime:
+    """
+    常用YouTube统计周期的数据处理。还是针对YouTube导出数据的形式来确认。
+    """
+    if unit not in ["day","week","month","year"] :
+        raise ValueError("unit = {} is not supported!".format(unit))
+    if bis_ not in ["last","now"] :
+        raise ValueError("The variable bis_ only supports the values 'last' and 'now'.")
+    if bis_ == "last" :
+        midres = last_date(last_=unit)
+        midres = (midres[0],midres[1].add(days=1))
+    else:
+        midres = near_date(near_=unit, nth=0)
+        if unit == "month" :
+            midres = (midres[0],near_date(near_="day",nth=0)[1])
+        elif unit == "year" :
+            midres = (midres[0],last_date(last_="month")[1].add(days=1))
+        else:
+            midres = (midres[0],midres[1].add(days=1))
+    if isinstance(to_string, str):
+        sfm = to_string
+    else:
+        if unit == "year" :
+            sfm = "%Y"
+        elif unit == "month" :
+            sfm = "%Y%m"
+        elif unit == "week" :
+            sfm = "%Y-%W"
+        else :
+            sfm = "%Y-%m-%d"
+    if '%' in sfm :
+        toSFun = (getattr(midres[0], "strftime"),
+                  getattr(midres[1], "strftime"))
+    else :
+        toSFun = (getattr(midres[0], "format"),
+                  getattr(midres[1], "format"))
+    if single :
+        return toSFun[0](sfm) if to_string else midres[0]
+    else :
+        return [f(sfm) for f in toSFun] if to_string else midres
 
 def youtube_datetime(keydate:str, seq:str|None = None, daily:bool = False,
                      dateformat:str|None = None, in_USA:bool = False,

@@ -247,12 +247,16 @@ def near_date(keydate:str|pdl.DateTime|None = None,
     """
     计算之前的一段时间区间，可以是之前1天也可以是之前n天到前1天。
     near_ 用于计算之前的周期单位。
-    nth 用于计算之前周期的跨度。
-    例如： "near_=day,nth=1"，代表昨天时间区间（默认计算昨天）。
+    nth 用于计算之前周期的跨度。nth>0,表示到昨日的最nth个周期；nth=0,表示当前的周期。
+    例如：1. "near_=day,nth=1"，代表昨天时间区间（默认计算昨天）。
+         2. "near_=day,nth=0"，代表今天时间区间。
     """
     if near_ not in ["day","week","month","year"] :
         raise ValueError("`near_` must be in ['day', 'week','month', 'year']")
     pinDate = keydate if isinstance(keydate, pdl.DateTime) else quick_date(date=keydate,tz=tz)
-    res = (pinDate.subtract(**{near_+"s":nth}).start_of("day"),
-           pinDate.subtract(days=1).end_of("day"))
+    if nth > 0 :
+        res = (pinDate.subtract(**{near_+"s":nth}).start_of("day"),
+            pinDate.subtract(days=1).end_of("day"))
+    else:
+        res = (pinDate.start_of(near_),pinDate.end_of(near_))
     return res
