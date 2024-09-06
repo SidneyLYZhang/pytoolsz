@@ -16,6 +16,8 @@
 # See the Mulan PSL v2 for more details.
 
 from pathlib import Path
+
+import pdfplumber
 import sys
 
 
@@ -74,3 +76,15 @@ def lastFile(folder:str|Path, filename:str,
     else: 
         cKdata = checkList.index(min(checkList))
     return findedfile[cKdata]
+
+def read_pdf_text(pdfPath:str|Path) -> list[str] :
+    """
+    以文本形式读取PDF内容
+    """
+    data = []
+    with pdfplumber.open(Path(pdfPath)) as pdf :
+        for page in pdf.pages:
+                    txt = page.extract_text()
+                    txt = txt.split('\n')
+                    data.extend(txt)
+    return data

@@ -25,6 +25,7 @@ import datasets
 import pytoolsz.pretools as pretools
 import pytoolsz.compress as compress
 import pytoolsz.handlepath as handlepath
+import pytoolsz.utils as utils
 from pytoolsz.saveExcel import (
     saveExcel,
     transColname2Letter
@@ -34,7 +35,7 @@ from pytoolsz.saveExcel import (
 def version(println:bool = True, 
             output:bool = False) -> str|None:
     version_txt = [
-        "0.1.0",
+        "0.1.4",
         "Copyright (c) 2024 Sidney Zhang <zly@lyzhang.me>",
         "PyToolsz is licensed under Mulan PSL v2."
     ]
@@ -54,11 +55,12 @@ __all__ = [
     "zipreader",
     "saveExcel",
     "transColname2Letter",
+    "utils",
     "version"
 ]
 
 if __name__ == "__main__":
-    from pytoolsz.pretools import markdown_print
+    from pytoolsz.utils import print_special
     version()
-    markdown_print(datasets.iris.NOTE)
+    print_special(datasets.iris.NOTE, mode="markdown")
     print(datasets.iris.data())

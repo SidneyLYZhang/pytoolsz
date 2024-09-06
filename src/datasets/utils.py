@@ -18,9 +18,9 @@
 import datasets.iris as iris
 import datasets.covid as covid
 import datasets.tstest as tstest
-from pytoolsz.pretools import markdown_print
+from pytoolsz.utils import print_special
 
 if __name__ == "__main__":
-    markdown_print(iris.DESCRLONG)
+    print_special(iris.DESCRLONG,mode="markdown")
     print(covid.data().columns)
     print(type(covid.data()))

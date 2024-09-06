@@ -18,8 +18,6 @@
 from pytoolsz.frame import just_load
 from pathlib import Path
 from numbers import Number
-from rich.markdown import Markdown
-from rich.console import Console
 from decimal import Decimal,ROUND_HALF_UP
 from collections.abc import Iterable
 
@@ -34,7 +32,7 @@ import re
 
 
 __all__ = ["covert_macadress","convert_suffix","around_right","round",
-           "markdown_print","local_name","convert_country_code",
+           "local_name","convert_country_code",
            "quick_date","near_date","last_date","get_interval_dates"]
 
 def covert_macadress(macadress:str, upper:bool = True) -> str:
@@ -103,13 +101,6 @@ def round(numbs:Iterable, n:int = 2,
                         null_na_handle=null_na_handle,
                         precise=True) for x in numbs]
     return res
-
-def markdown_print(text:str) -> None:
-    """
-    使用Markdown方式进行文本输出。
-    """
-    console = Console()
-    console.print(Markdown(text))
 
 def local_name(code:str, local:str = "zh", not_found:str|None = None ) -> str:
     """
