@@ -245,8 +245,8 @@ def read_multiChannel(tarName:str, between_date:list[str], channelNames:list[str
                     ) -> szDataFrame:
     data = []
     for chs in channelNames :
-        data.append(read_YouTube_zipdata(tarName, between_date, chs, lastnum, 
-                                         dataName, rootpath, compare))
+        data.append(read_YouTube_zipdata(tarName, between_date, chs,  
+                                         dataName, rootpath, lastnum, compare))
     if group_by is not None :
         if isinstance(group_by, str) :
             data = pl.concat(data).group_by(group_by).agg(cs.numeric().sum())
