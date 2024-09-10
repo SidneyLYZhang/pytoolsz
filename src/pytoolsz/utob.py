@@ -28,6 +28,7 @@ from pendulum import interval, DateTime
 
 import re
 import polars as pl
+import pandas as pd
 import polars.selectors as cs
 
 __all__ = ["youtube_datetime","read_YouTube_zipdata","read_multiChannel"]
@@ -241,12 +242,15 @@ def read_multiChannel(tarName:str, between_date:list[str], channelNames:list[str
                       dataName:str, lastnum:bool|int = False,
                       rootpath:Path|None = None,
                       compare:bool = False, 
-                      group_by:str|Mapping[str,IntoExpr|Iterable[IntoExpr]|Mapping[str,IntoExpr]]|None = None
-                    ) -> szDataFrame:
+                      group_by:str|Mapping[str,IntoExpr|Iterable[IntoExpr]|Mapping[str,IntoExpr]]|None = None,
+                      convert:str = "polars"
+                    ) -> pl.DataFrame|pd.DataFrame:
+
     data = []
     for chs in channelNames :
         data.append(read_YouTube_zipdata(tarName, between_date, chs,  
                                          dataName, rootpath, lastnum, compare))
+    data = [x.get() for x in data]
     if group_by is not None :
         if isinstance(group_by, str) :
             data = pl.concat(data).group_by(group_by).agg(cs.numeric().sum())
@@ -259,7 +263,8 @@ def read_multiChannel(tarName:str, between_date:list[str], channelNames:list[str
                     data = data.group_by(key).agg(*value)
                 else :
                     data = data.group_by(key).agg(value)
-    return data
+    return data if convert == "polars" else data.to_pandas()
+
 
 if __name__ == "__main__":
     print("Hi buddy!")
