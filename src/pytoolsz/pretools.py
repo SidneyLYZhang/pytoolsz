@@ -68,7 +68,7 @@ def convert_suffix(file:str, to:str = "csv") -> None :
     print("converted successfully!")
 
 def around_right(nums:Number|None, keep_n:int = 2, 
-                 null_na_handle:bool|float = False,
+                 null_na_handle:bool|float = True,
                  precise:bool = True) :
     """
     用于更准确的四舍五入操作。
@@ -80,6 +80,8 @@ def around_right(nums:Number|None, keep_n:int = 2,
     if (nums is None) or (nums is np.nan):
         if isinstance(null_na_handle, bool) :
             tNum = np.float64(0.0) if null_na_handle else nums
+            if (tNum is None) or (tNum is np.nan):
+                return tNum
         else :
             tNum = np.float64(null_na_handle)
     elif nums is np.inf :
