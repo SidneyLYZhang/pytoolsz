@@ -257,9 +257,9 @@ def read_multiChannel(tarName:str, between_date:list[str], channelNames:list[str
         else :
             data = pl.concat(data)
             for key,value in group_by.items() :
-                if isinstance(value, Mapping[str,IntoExpr]):
+                if isinstance(value, Mapping):
                     data = data.group_by(key).agg(**value)
-                elif isinstance(value, Iterable[IntoExpr]):
+                elif isinstance(value, Iterable):
                     data = data.group_by(key).agg(*value)
                 else :
                     data = data.group_by(key).agg(value)
