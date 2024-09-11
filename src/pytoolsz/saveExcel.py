@@ -299,7 +299,7 @@ class saveExcel(object):
             if pd.api.types.is_numeric_dtype(self.__data[i].dtype) :
                 res_data.append(self.__data[i].agg(agg_fun))
             else:
-                res_data.append(self.__data[i].head()[0])
+                res_data.append(self.__data[i].head().iloc[0])
         if stGML > 0 :
             self.__ws.merge_cells("{}:{}{}".format(self.__nextPoint[0],
                                                    get_column_letter(
