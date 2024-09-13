@@ -25,6 +25,7 @@ import datasets
 import pytoolsz.pretools as pretools
 import pytoolsz.compress as compress
 import pytoolsz.handlepath as handlepath
+import pytoolsz.ppTrans as ppTrans
 import pytoolsz.utils as utils
 from pytoolsz.saveExcel import (
     saveExcel,
@@ -35,7 +36,7 @@ from pytoolsz.saveExcel import (
 def version(println:bool = True, 
             output:bool = False) -> str|None:
     version_txt = [
-        "0.1.9",
+        "0.1.10",
         "Copyright (c) 2024 Sidney Zhang <zly@lyzhang.me>",
         "PyToolsz is licensed under Mulan PSL v2."
     ]
@@ -51,6 +52,7 @@ __all__ = [
     "datasets",
     "getreader",
     "just_load",
+    "ppTrans",
     "szDataFrame",
     "zipreader",
     "saveExcel",
