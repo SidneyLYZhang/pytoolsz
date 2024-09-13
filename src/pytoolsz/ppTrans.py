@@ -20,11 +20,9 @@ from pathlib import Path
 from PIL import Image
 from tempfile import TemporaryDirectory
 import win32com.client as wcc
-import shutil
 import sys
 
 __all__ = ["convertPPT", "PPT_longPic"]
-
 
 class convertPPT(object):
     """
@@ -35,18 +33,20 @@ class convertPPT(object):
     TTYPES = {
         "JPG" : 17,
         "PNG" : 18,
-        "PDF" : 2,
-        "XPS" : 1
+        "PDF" : 32,
+        "XPS" : 33
     }
+    __all__ = ["savetype", "trans", "close", "open"]
+
     def __init__(self, file:str|Path, trans:str = "JPG") -> None:
         if sys.platform != "win32":
             raise SystemError("Only support Windows system.")
         if not Path(file).exists():
             raise FileNotFoundError("File not found! Please check the file path.")
-        if trans not in convertPPT.TTYPES.keys():
+        if trans.upper() not in convertPPT.TTYPES.keys():
             raise ValueError("Save type is not supported.")
         self.__file = Path(file)
-        self.__saveType = (convertPPT.TTYPES[trans], trans)
+        self.__saveType = (convertPPT.TTYPES[trans.upper()], trans.upper())
         self.__inUsing = wcc.Dispatch('PowerPoint.Application')
     def __enter__(self) -> Self:
         return self
@@ -55,11 +55,14 @@ class convertPPT(object):
     @property
     def savetype(self) -> str :
         return self.__saveType[1]
+    @classmethod
+    def open(cls, file:str|Path, trans:str = "JPG") -> Self :
+        return cls(file, trans = trans.upper())
     def saveAs(self, saveType:str|None = None) -> None :
         if saveType not in convertPPT.TTYPES.keys():
             raise ValueError("Save type is not supported.")
         if saveType is not None:
-            self.__saveType = (convertPPT.TTYPES[saveType], saveType)
+            self.__saveType = (convertPPT.TTYPES[saveType.upper()], saveType.upper())
         else:
             self.__saveType = (convertPPT.TTYPES["JPG"], "JPG")
     def trans(self, saveto:str|Path = ".", 
@@ -72,13 +75,10 @@ class convertPPT(object):
             output = self.__file.absolute()
         else :
             output = Path(saveto).absolute()
-        if self.__saveType < 3 :
-            ppt.ExportAsFixedFormat(output, )
+        if width is not None :
+            ppt.Export(output, self.__saveType[1], width)
         else:
-            if width is not None :
-                ppt.Export(output, self.__saveType[1], width)
-            else:
-                ppt.SaveAs(output, self.__saveType[0])
+            ppt.SaveAs(output, self.__saveType[0])
     def close(self, to_console:bool = False) -> None :
         self.__inUsing.Quit()
         if to_console :
@@ -94,14 +94,14 @@ def PPT_longPic(pptFile:str|Path, saveName:str|None = None, width:int|str|None =
     """
     if saveName :
         sType = saveName.split(".")[-1] if "." in saveName else "JPG"
-        if sType not in ["JPG", "PNG"] :
+        if sType.upper() not in ["JPG", "PNG"] :
             raise ValueError("Unable to save this type `{}` of image.".format(sType))
     else:
         sType = "JPG"
     with TemporaryDirectory() as tmpdirname:
         with convertPPT(pptFile, trans=sType) as ppt:
             ppt.trans(saveto=tmpdirname)
-        picList = Path(tmpdirname).glob("*.{}".format(sType))
+        picList = list(Path(tmpdirname).glob("*.{}".format(sType)))
         with Image.open(picList[0]) as img :
             if isinstance(width, str):
                 qw = float(width[:-1])/100.0
@@ -112,16 +112,20 @@ def PPT_longPic(pptFile:str|Path, saveName:str|None = None, width:int|str|None =
                 nwidth, nheight = (width, int(img.height*width/img.width))
             canvas = Image.new(img.mode, (nwidth, nheight * len(picList)))
         for i in range(1,len(picList)+1) :
-            with Image.open() as img :
+            with Image.open(Path(tmpdirname).joinpath("幻灯片{}.{}".format(i,sType))) as img :
                 new_img = img.resize((nwidth,nheight), resample=Image.Resampling.LANCZOS)
                 canvas.paste(new_img, box=(0, (i-1) * nheight))
+        if Path(saveto) == Path('.') :
+            filepath = Path(pptFile).parent
+        else :
+            filepath = Path(saveto)
         if saveName :
             if '.' in saveName :
-                canvas.save(Path(saveto).joinpath(saveName))
+                canvas.save(filepath.joinpath(saveName))
             else:
-                canvas.save(Path(saveto).joinpath(saveName), format=sType)
+                canvas.save(filepath.joinpath(saveName), format=sType)
         else:
-            canvas.save(Path(saveto).joinpath(Path(pptFile).stem), format=sType)
+            canvas.save(filepath.joinpath(Path(pptFile).stem), format=sType)
 
 
 if __name__ == "__main__":
