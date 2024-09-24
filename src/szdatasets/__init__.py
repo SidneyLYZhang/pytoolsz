@@ -15,8 +15,8 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
-import datasets.iris as iris
-import datasets.covid as covid
-import datasets.tstest as tstest
+import szdatasets.iris as iris
+import szdatasets.covid as covid
+import szdatasets.tstest as tstest
 
 __all__ = ["iris", "covid", "tstest"]

@@ -21,12 +21,13 @@ from pytoolsz.frame import (
     szDataFrame,
     zipreader
 )
-import datasets
+import szdatasets as datasetsz
 import pytoolsz.pretools as pretools
 import pytoolsz.compress as compress
 import pytoolsz.handlepath as handlepath
 import pytoolsz.ppTrans as ppTrans
 import pytoolsz.utils as utils
+import pytoolsz.graph as graph
 from pytoolsz.saveExcel import (
     saveExcel,
     transColname2Letter
@@ -36,7 +37,7 @@ from pytoolsz.saveExcel import (
 def version(println:bool = True, 
             output:bool = False) -> str|None:
     version_txt = [
-        "0.1.11",
+        "0.2.0",
         "Copyright (c) 2024 Sidney Zhang <zly@lyzhang.me>",
         "PyToolsz is licensed under Mulan PSL v2."
     ]
@@ -49,7 +50,7 @@ __all__ = [
     "pretools",
     "handlepath",
     "compress",
-    "datasets",
+    "datasetsz",
     "getreader",
     "just_load",
     "ppTrans",
@@ -57,6 +58,7 @@ __all__ = [
     "zipreader",
     "saveExcel",
     "transColname2Letter",
+    "graph",
     "utils",
     "version"
 ]
@@ -64,5 +66,5 @@ __all__ = [
 if __name__ == "__main__":
     from pytoolsz.utils import print_special
     version()
-    print_special(datasets.iris.NOTE, mode="markdown")
-    print(datasets.iris.data())
+    print_special(datasetsz.iris.NOTE, mode="markdown")
+    print(datasetsz.iris.data())

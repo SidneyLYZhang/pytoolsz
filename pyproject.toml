@@ -1,6 +1,6 @@
 [project]
 name = "pytoolsz"
-version = "0.1.11"
+version = "0.2.0"
 description = "A set of Python Tools, mainly used to deal with work problems."
 authors = [
     {name = "Sidney Zhang", email = "zly@lyzhang.me"},
@@ -20,6 +20,10 @@ dependencies = [
     "openpyxl>=3.1.5",
     "pillow>=10.4.0",
     "pywin32>=306",
+    "matplotlib>=3.9.2",
+    "seaborn>=0.13.2",
+    "cmaps>=2.0.1",
+    "cartopy>=0.23.0",
 ]
 requires-python = ">= 3.8"
 readme = "README.md"

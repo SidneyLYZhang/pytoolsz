@@ -12,6 +12,12 @@
 -e file:.
 brotli==1.1.0
     # via py7zr
+cartopy==0.23.0
+    # via pytoolsz
+certifi==2024.8.30
+    # via pyproj
+cmaps==2.0.1
+    # via pytoolsz
 cmdstanpy==1.2.4
     # via prophet
 colorama==0.4.6
@@ -47,7 +53,11 @@ markdown-it-py==3.0.0
 markupsafe==2.1.5
     # via jinja2
 matplotlib==3.9.2
+    # via cartopy
+    # via cmaps
     # via prophet
+    # via pytoolsz
+    # via seaborn
 mdurl==0.1.2
     # via markdown-it-py
 mkl==2021.4.0
@@ -59,6 +69,8 @@ multivolumefile==0.2.3
 networkx==3.3
     # via torch
 numpy==2.1.0
+    # via cartopy
+    # via cmaps
     # via cmdstanpy
     # via contourpy
     # via matplotlib
@@ -67,18 +79,23 @@ numpy==2.1.0
     # via prophet
     # via pyarrow
     # via scipy
+    # via seaborn
+    # via shapely
     # via stanio
     # via statsmodels
     # via torchvision
 openpyxl==3.1.5
     # via pytoolsz
 packaging==24.1
+    # via cartopy
+    # via cmaps
     # via matplotlib
     # via statsmodels
 pandas==2.2.2
     # via cmdstanpy
     # via country-converter
     # via prophet
+    # via seaborn
     # via statsmodels
 patsy==0.5.6
     # via statsmodels
@@ -110,6 +127,10 @@ pyparsing==3.1.2
     # via matplotlib
 pyppmd==1.1.0
     # via py7zr
+pyproj==3.6.1
+    # via cartopy
+pyshp==2.3.1
+    # via cartopy
 python-dateutil==2.9.0.post0
     # via holidays
     # via matplotlib
@@ -126,6 +147,10 @@ rich==13.7.1
     # via pytoolsz
 scipy==1.14.0
     # via statsmodels
+seaborn==0.13.2
+    # via pytoolsz
+shapely==2.0.6
+    # via cartopy
 six==1.16.0
     # via patsy
     # via python-dateutil

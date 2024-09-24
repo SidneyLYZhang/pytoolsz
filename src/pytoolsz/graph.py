@@ -16,14 +16,131 @@
 # See the Mulan PSL v2 for more details.
 
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolor
+import matplotlib.patches as mpatches
+from matplotlib.patheffects import Normal, Stroke
+import matplotlib as mpl
 import seaborn as sns
-from matplotlib.ticker import FuncFormatter
 import pandas as pd
+import polars as pl
 import numpy as np
+import inspect
+import cmaps
+import re
 
+import cartopy.crs as ccrs
+import frykit.plot as fplt
+import frykit.shp as fshp
+from typing import Self
+from matplotlib.colors import LinearSegmentedColormap
+
+__all__ = ["ColormapSZ", "bullet", "chinaMap"]
+
+def _list_cmaps() -> list :
+    attributes = inspect.getmembers(cmaps, lambda _: not (inspect.isroutine(_)))
+    colors = [_[0] for _ in attributes if
+              not (_[0].startswith('__') and _[0].endswith('__'))]
+    return colors
+
+def _list_MPLColors() -> list :
+    res = list(mcolor.BASE_COLORS.keys())
+    res.extend(list(mcolor.TABLEAU_COLORS.keys()))
+    res.extend(list(mcolor.CSS4_COLORS.keys()))
+    res.extend(list(mcolor.XKCD_COLORS.keys()))
+    return res
+
+def _get_MPLColors(name:str) -> str :
+    if name in mcolor.TABLEAU_COLORS.keys():
+        return mcolor.TABLEAU_COLORS[name]
+    elif name in mcolor.CSS4_COLORS.keys():
+        return mcolor.CSS4_COLORS[name]
+    elif name in mcolor.XKCD_COLORS.keys():
+        return mcolor.XKCD_COLORS[name]
+    else:
+        return mcolor.BASE_COLORS[name]
+
+def _list_MPLColormaps() -> list :
+    res = ['viridis', 'plasma', 'inferno', 'magma', 'cividis', 'Greys', 
+           'Purples', 'Blues', 'Greens', 'Oranges', 'Reds',
+            'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu',
+            'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn',
+            'binary', 'gist_yarg', 'gist_gray', 'gray', 'bone', 'pink',
+            'spring', 'summer', 'autumn', 'winter', 'cool', 'Wistia',
+            'hot', 'afmhot', 'gist_heat', 'copper', 'PiYG', 'PRGn', 
+            'BrBG', 'PuOr', 'RdGy', 'RdBu','RdYlBu', 'RdYlGn', 'Spectral', 
+            'coolwarm', 'bwr', 'seismic', 'twilight', 'twilight_shifted', 
+            'hsv', 'Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 
+            'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c',
+            'flag', 'prism', 'ocean', 'gist_earth', 'terrain', 'gist_stern',
+            'gnuplot', 'gnuplot2', 'CMRmap', 'cubehelix', 'brg',
+            'gist_rainbow', 'rainbow', 'jet', 'turbo', 'nipy_spectral',
+            'gist_ncar']
+    return res
+
+class ColormapSZ(object) :
+    """
+    ::颜色映射::
+    
+    - 可以使用多种内容生成colormap。核心依赖于 `matplotlib.colors.LinearSegmentedColormap` 。
+    - 
+    """
+    def __init__(self, name:str|list|LinearSegmentedColormap = "blue", 
+                 reverse:bool = False) -> None:
+        if isinstance(name, list) :
+            self.__cmap = LinearSegmentedColormap.from_list("createdColormap", name)
+        elif isinstance(name, LinearSegmentedColormap) :
+            self.__cmap = name
+            if reverse :
+                self.__cmap = self.__cmap.reversed()
+        else:
+            if re.match("^#(([A-Fa-f0-9]{3})|([A-Fa-f0-9]{6}))$", name) :
+                self.__cmap = sns.light_palette(name, reverse=reverse,as_cmap=True)
+            elif name in _list_cmaps() :
+                self.__cmap = getattr(cmaps, name).to_seg(256)
+                if reverse :
+                    self.__cmap = self.__cmap.reversed()
+            elif name.upper() in _list_MPLColormaps() :
+                self.__cmap = mpl.colormaps[name]
+                if reverse :
+                    self.__cmap = self.__cmap.reversed()
+            elif name.upper() in _list_MPLColors() :
+                self.__cmap = sns.light_palette(
+                    _get_MPLColors(name),reverse=reverse,as_cmap=True)
+            else:
+                raise ValueError("color name not found !")
+    @property
+    def name(self) -> str :
+        return self.__cmap.name
+    @property
+    def N(self) -> int :
+        return self.__cmap.N
+    def reversed(self) -> Self :
+        newcmap = self.__cmap.reversed()
+        return(ColormapSZ(name = newcmap))
+    def resampled(self, n:int) -> LinearSegmentedColormap :
+        return self.__cmap.resampled(n)
+    def get(self, n:int) -> str :
+        return mpl.colors.rgb2hex(self.__cmap(n))
+    def getListColors(self, length:int) -> list :
+        tcmap = self.resampled(length)
+        return [mpl.colors.rgb2hex(tcmap(i+1)) for i in range(length)]
+    def colormap(self) -> LinearSegmentedColormap :
+        return self.__cmap
+    def show(self) -> None :
+        import matplotlib.pyplot as plt
+        a = np.outer(np.ones(10), np.arange(0, 1, 0.001))
+        plt.figure(figsize=(2.5, 0.5))
+        plt.subplots_adjust(top=0.95, bottom=0.05, left=0.01, right=0.99)
+        plt.subplot(111)
+        plt.axis('off')
+        plt.imshow(a, aspect='auto', cmap=self, origin='lower')
+        plt.show()
 
 
 class bullet(object):
+    """
+    子弹图
+    """
     def __init__(self, data, fitted = False, limits = None, palette = None) -> None:
         '''
         fitted data: 为已经整理好的
@@ -48,6 +165,9 @@ class bullet(object):
             'title' : None,
         }
     def datafitting(self, values = None, index = None, columns = None, aggfunc = 'sum'):
+        """
+        数据整理
+        """
         if self.__fitdata is None:
             self.__fitdata = self.data.pivot_table(values=values,index=index,columns=columns,aggfunc=aggfunc)
         if self.__config['keep_label'] :
@@ -72,6 +192,9 @@ class bullet(object):
         plt.figure(figsize=self.__config["figsize"])
         sns.heatmap(self.__fitdata.T,cmap=self.__config["palette"])
     def plot(self, save = None):
+            """
+            子弹图绘制。
+            """
             # Determine the max value for adjusting the bar height
             # Dividing by 10 seems to work pretty well
             h = self.__limits[-1] / 10
@@ -179,3 +302,202 @@ class bullet(object):
                 fig.suptitle(self.__config["title"], fontsize=14)
             WHspace = {"hspace" if self.__config['orientations']=='horizontal' else "wspace":0}
             fig.subplots_adjust(**WHspace)
+
+
+class chinaMap(object) :
+    """
+    中国地图的热力图绘制
+    """
+    MAP_PROJECTION = ["NormalChina", "Mercator", "PlateCarree"]
+    def __init__(self, data:pl.DataFrame|pd.DataFrame, 
+                 place:str|None = None, value:str|None = None, 
+                 nbin:list|int|bool = True, vmin:float|str = 'auto', vmax:float|str = 'auto', 
+                 cmap:str|tuple = "BlGrYeOrReVi200",
+                 figsize:tuple[int|float] = (10, 6), nine_line:bool|str = True,
+                 map_projection:str = "NormalChina") -> None :
+        self.__oridata = pl.from_dataframe(data) if isinstance(data, pd.DataFrame) else data
+        if isinstance(nine_line,str):
+            if nine_line != "mini" :
+                raise ValueError("nine_line参数错误")
+        if place is None :
+            self.__usedata = pl.DataFrame()
+        else :
+            if value is None :
+                self.__usedata = self.__oridata.group_by(place).agg(
+                    pl.col(place).count().alias("count"))
+            else :
+                self.__usedata = self.__oridata.select(
+                    pl.col([place,value]))
+        self.__selName = self.__usedata.columns
+        if map_projection not in chinaMap.MAP_PROJECTION :
+            raise ValueError("map_projection参数错误")
+        if map_projection == "NormalChina" :
+            self.__map_crs = fplt.CN_AZIMUTHAL_EQUIDISTANT
+        elif map_projection == "Mercator" :
+            self.__map_crs = fplt.WEB_MERCATOR
+        else:
+            self.__map_crs = fplt.PLATE_CARREE
+        self.__data_crs = ccrs.PlateCarree()
+        self.__fig = None
+        self.__main_ax = None
+        self.__mini_ax = None
+        self.__plot_config = {
+            "font" : None,
+            "figsize" : figsize,
+            "nine_line" : nine_line,
+            "cmap_name" : cmap, 
+            "nbin" : nbin,
+            "vmin" : self.__oridata[value].min() if vmin == 'auto' else vmin,
+            "vmax" : self.__oridata[value].max() if vmax == 'auto' else vmax,
+            "main_extent":(78, 134, 14, 55), # 用于控制地图的截取(左右下上)(经纬度)
+            "mini_extent":(105, 120, 2, 25), # 用于控制地图的截取(左右下上)(经纬度)
+        }
+    @classmethod
+    def show_map_projection(cls, txt:bool = False) -> str|None :
+        info = [
+            "标准中国地图投影",
+            "网格墨卡托投影",
+            "等经纬投影"
+        ]
+        txtDict = dict(zip(chinaMap.MAP_PROJECTION,info))
+        res = ""
+        for key,data in txtDict.items() :
+            res += "{}:\t{}\n".format(key,data)
+        if txt :
+            return res
+        else:
+            print(res)
+    def set_configs(self, **kwargs) -> None :
+        """
+        设置绘图参数
+        """
+        for key,value in kwargs.items() :
+            if key in self.__plot_config.keys() :
+                self.__plot_config[key] = value
+            else :
+                raise ValueError("{}参数错误".format(key))
+    def fitted_colormap(self, colormap:str|list|None = None) -> None :
+        pass
+    def preDrawing(self) -> None :
+        if self.__plot_config["font"] is not None :
+            plt.rcParams['font.family'] = self.__plot_config["font"]
+        self.__fig = plt.figure(figsize=self.__plot_config["figsize"])
+        self.__main_ax = self.__fig.add_subplot(projection=self.__map_crs)
+        self.__main_ax.set_extent((78, 134, 14, 55), self.__data_crs)
+        if self.__plot_config["nine_line"] :
+            fplt.add_nine_line(self.__main_ax, lw=0.5)
+        self.__main_ax.axis('off')
+        if self.__plot_config["nine_line"] == "mini" :
+            self.__mini_ax = fplt.add_mini_axes(self.__main_ax)
+            self.__mini_ax.set_extent((105, 120, 2, 25), self.__data_crs)
+            fplt.add_nine_line(self.__mini_ax, lw=0.5)
+    def plot_province(self) -> None :
+        if self.__main_ax is None :
+            raise ValueError("请先调用drawing方法，完成绘图准备。")
+        # 字体描边，便于文字识别
+        path_effects = [Stroke(linewidth=1.5, foreground='w'), Normal()]
+        # 绘图
+        for ax in [self.__main_ax, self.__mini_ax]:
+            fplt.add_geoms(
+                ax, self.__usedata[self.__selName[0]].to_list(), 
+                array=self.__usedata[self.__selName[1]].to_list(), 
+                cmap=self.__plot_config["cmap"], norm=self.__plot_config["norm"], 
+                ec='k', lw=0.4
+            )
+            for text in fplt.label_cn_province(ax).texts:
+                text.set_path_effects(path_effects)
+                if text.get_text() in ['香港', '澳门']:
+                    text.set_visible(False)
+    def add_compass(self, x:float = 0.5, y:float = 0.85, 
+                    angle:float|None = None,
+                    size:float = 20, style:str = 'circle') -> None :
+        """
+        添加指南针
+        """
+        if style not in ['arrow', 'star', 'circle']:
+            raise ValueError("style参数错误")
+        fplt.add_compass(self.__main_ax, x, y, size=size, 
+                         angle=angle, style=style)
+    def add_scalebar(self, x:float = 0.22, y:float = 0.1,
+                     length:float = 1000, units:str = "km",
+                     segments:list|int = 5) -> None :
+        """
+        添加作标尺
+        """
+        scale_bar = fplt.add_scale_bar(self.__main_ax, x, y, length=length, units=units)
+        if isinstance(segments, list):
+            if len(segments) % 2 == 0 :
+                scale_bar.set_xticks(segments)
+            else:
+                shSegs = [v for i,v in enumerate(segments) if i % 2 == 0]
+                miSegs = [v for i,v in enumerate(segments) if i % 2 == 1]
+                scale_bar.set_xticks(shSegs)
+                scale_bar.set_xticks(miSegs, minor=True)
+        else:
+            bins = length / (segments - 1)
+            segList = [int(x) for x in range(0,(length + bins), bins)]
+            if segments % 2 == 0 :
+                scale_bar.set_xticks(segList)
+            else :
+                shSegs = [v for i,v in enumerate(segList) if i % 2 == 0]
+                miSegs = [v for i,v in enumerate(segList) if i % 2 == 1]
+                scale_bar.set_xticks(shSegs)
+                scale_bar.set_xticks(miSegs, minor=True)
+    def add_legend(self, loc:tuple[float]|str = (0.05,0.05),
+                   title:str = "图例", title_fontsize:str = "small",
+                   style:str = "spiltbar", 
+                   handleheight:float = 1.5,
+                   frameon:bool = False) -> None :
+        """
+        添加图例
+        """
+        if style not in ["colorbar_v","colorbar_h","spiltbar"]:
+            raise ValueError("style参数错误")
+        if title_fontsize in ['xx-small', 'x-small', 'small', 
+                              'medium', 'large', 'x-large', 'xx-large'] :
+            raise ValueError("title_fontsize参数错误")
+        if isinstance(loc,str) and loc not in ['best','upper right','upper left','lower left',
+                                               'lower right','right','center left','center right',
+                                               'lower center','upper center','center'] :
+            raise ValueError("loc参数错误")
+        
+        if style == "colorbar_v" :
+            pass
+        elif style == "colorbar_h" :
+            pass
+        else :
+            patches = []
+            for color, label in zip(colors, labels):
+                patch = mpatches.Patch(fc=color, ec='k', lw=0.5, label=label)
+                patches.append(patch)
+        self.__main_ax.legend(
+            handles=patches,
+            loc=loc,
+            frameon=frameon,
+            handleheight=handleheight,
+            fontsize=title_fontsize,
+            title=title,
+        )
+    def __enter__(self) -> Self :
+        return self
+    def __exit__(self, exc_type, exc_value, exc_tb) -> None :
+        self.close()
+    def save(self, saveto:str|Path|None = None) -> None :
+        """
+        保存图片
+        """
+        if saveto is None :
+            sPlace = Path("./picture.png")
+        else :
+            sPlace = Path(saveto)
+        fplt.savefig(sPlace)
+    def show(self) -> None :
+        """
+        显示绘图结果
+        """
+        plt.show()
+    def close(self) -> None :
+        """
+        关闭绘图窗口
+        """
+        plt.close(self.__fig)
