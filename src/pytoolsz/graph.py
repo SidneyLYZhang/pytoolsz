@@ -31,8 +31,10 @@ import re
 
 import cartopy.crs as ccrs
 import frykit.plot as fplt
+import frykit.shp as fshp
 from typing import Self
 from pathlib import Path
+from fuzzywuzzy import process
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patheffects import Normal, Stroke
@@ -79,6 +81,13 @@ def _list_MPLColormaps() -> list :
             'gist_rainbow', 'rainbow', 'jet', 'turbo', 'nipy_spectral',
             'gist_ncar']
     return res
+
+def _checkList(txt:str, aList:list) -> bool :
+    for i in aList :
+        if txt in i :
+            return True
+    return False
+
 
 class ColormapSZ(object) :
     """
@@ -328,12 +337,26 @@ class chinaMap(object) :
         if place is None :
             self.__usedata = pl.DataFrame()
         else :
-            if value is None :
-                self.__usedata = self.__oridata.group_by(place).agg(
-                    pl.col(place).count().alias("count"))
+            checkData = self.__oridata.with_columns(
+                pl.col(place).map_elements(lambda x : str(type(x)), return_dtype=pl.String).alias("check")
+            )
+            if not _checkList("Polygon", checkData["check"].unique().to_list()) :
+                checkData = checkData.with_columns(
+                    pl.col(place).map_elements(lambda x : fshp.get_cn_province(
+                                                                process.extractOne(x,
+                                                                    fshp.get_cn_province_names())[0]
+                                                          ), 
+                                               return_dtype=pl.Object).alias("geoPlace")
+                )
+                xplace = "geoPlace"
             else :
-                self.__usedata = self.__oridata.select(
-                    pl.col([place,value]))
+                xplace = place
+            if value is None :
+                self.__usedata = checkData.group_by(xplace).agg(
+                    pl.col(xplace).count().alias("count"))
+            else :
+                self.__usedata = checkData.select(
+                    pl.col([xplace,value]))
         self.__selName = self.__usedata.columns
         if map_projection not in chinaMap.MAP_PROJECTION :
             raise ValueError("map_projection参数错误")
@@ -432,7 +455,7 @@ class chinaMap(object) :
         else :
             xn = 5 if isinstance(self.__plot_config["nbin"],bool) else self.__plot_config["nbin"]
             widthTMP = self.__plot_config['vmax']-self.__plot_config['vmin']
-            gap = int(widthTMP/xn)
+            gap = math.ceil(widthTMP/xn)
             self.__plot_config["bins"] = [x for x in range(self.__plot_config['vmin'],self.__plot_config['vmax']+gap,gap)]
         bins = self.__plot_config["bins"]
         if self.__plot_config["labels"] is None :
@@ -616,11 +639,11 @@ class chinaMap(object) :
 if __name__ == "__main__" :
     import frykit.shp as fshp
     # 构建假数据
-    provinces = fshp.get_cn_province()
+    provinces = fshp.get_cn_province_names()
     data = np.linspace(0, 100, len(provinces))
     data = pl.DataFrame({"province":provinces,"data":data})
     # 画图
-    cmtest = chinaMap(data=data, place="province",value="data")
+    cmtest = chinaMap(data=data, place="province",value="data", vmin=-1)
     cmtest.set_configs(font = "Microsoft YaHei")
     cmtest.setting_colors(colormap="Blues")
     cmtest.preDrawing()

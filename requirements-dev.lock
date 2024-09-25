@@ -17,6 +17,10 @@ cartopy==0.23.0
     # via pytoolsz
 certifi==2024.8.30
     # via pyproj
+cffi==1.17.1
+    # via cryptography
+charset-normalizer==3.3.2
+    # via pdfminer-six
 cmaps==2.0.1
     # via pytoolsz
 cmdstanpy==1.2.4
@@ -27,6 +31,8 @@ contourpy==1.2.1
     # via matplotlib
 country-converter==1.2
     # via pytoolsz
+cryptography==43.0.1
+    # via pdfminer-six
 cycler==0.12.1
     # via matplotlib
 et-xmlfile==1.1.0
@@ -39,6 +45,8 @@ frykit==0.6.7
     # via pytoolsz
 fsspec==2024.6.1
     # via torch
+fuzzywuzzy==0.18.0
+    # via pytoolsz
 holidays==0.55
     # via prophet
 importlib-resources==6.4.3
@@ -51,6 +59,8 @@ jinja2==3.1.4
     # via torch
 kiwisolver==1.4.5
     # via matplotlib
+levenshtein==0.26.0
+    # via python-levenshtein
 markdown-it-py==3.0.0
     # via rich
 markupsafe==2.1.5
@@ -104,10 +114,15 @@ pandas==2.2.2
     # via statsmodels
 patsy==0.5.6
     # via statsmodels
+pdfminer-six==20231228
+    # via pdfplumber
+pdfplumber==0.11.4
+    # via pytoolsz
 pendulum==3.0.0
     # via pytoolsz
 pillow==10.4.0
     # via matplotlib
+    # via pdfplumber
     # via pytoolsz
     # via torchvision
 polars==1.5.0
@@ -124,12 +139,16 @@ pybcj==1.0.2
     # via py7zr
 pycountry==24.6.1
     # via pytoolsz
+pycparser==2.22
+    # via cffi
 pycryptodomex==3.20.0
     # via py7zr
 pygments==2.18.0
     # via rich
 pyparsing==3.1.2
     # via matplotlib
+pypdfium2==4.30.0
+    # via pdfplumber
 pyppmd==1.1.0
     # via py7zr
 pyproj==3.6.1
@@ -142,12 +161,16 @@ python-dateutil==2.9.0.post0
     # via pandas
     # via pendulum
     # via time-machine
+python-levenshtein==0.26.0
+    # via fuzzywuzzy
 pytz==2024.1
     # via pandas
 pywin32==306
     # via pytoolsz
 pyzstd==0.16.1
     # via py7zr
+rapidfuzz==3.10.0
+    # via levenshtein
 rich==13.7.1
     # via pytoolsz
 scipy==1.14.0

@@ -55,7 +55,7 @@ def print_special(data:any, mode:str = "auto",
     elif mode == "rainbow":
         println(data, color="rainbow", width=width)
     elif re.match(r"^color-\(?[\d|a-z]+\)?$", mode):
-        color = re.search("[\d|a-z]+", mode.split("-")[1]).group()
+        color = re.search("[0-9|a-z]+", mode.split("-")[1]).group()
         if re.match(r"^\d+$", color) :
             color = "color({})".format(color)
         println(data, color=color, width=width)
