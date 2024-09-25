@@ -18,21 +18,24 @@
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolor
 import matplotlib.patches as mpatches
-from matplotlib.patheffects import Normal, Stroke
+import matplotlib.cm as mcm
 import matplotlib as mpl
 import seaborn as sns
 import pandas as pd
 import polars as pl
 import numpy as np
 import inspect
+import math
 import cmaps
 import re
 
 import cartopy.crs as ccrs
 import frykit.plot as fplt
-import frykit.shp as fshp
 from typing import Self
+from pathlib import Path
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.patheffects import Normal, Stroke
 
 __all__ = ["ColormapSZ", "bullet", "chinaMap"]
 
@@ -93,19 +96,20 @@ class ColormapSZ(object) :
             if reverse :
                 self.__cmap = self.__cmap.reversed()
         else:
-            if re.match("^#(([A-Fa-f0-9]{3})|([A-Fa-f0-9]{6}))$", name) :
-                self.__cmap = sns.light_palette(name, reverse=reverse,as_cmap=True)
-            elif name in _list_cmaps() :
+            xname = name[:-2] if name.endswith("_r") else name
+            if re.match("^#(([A-Fa-f0-9]{3})|([A-Fa-f0-9]{6}))$", xname) :
+                self.__cmap = sns.light_palette(xname, reverse=reverse,as_cmap=True)
+            elif xname in _list_cmaps() :
                 self.__cmap = getattr(cmaps, name).to_seg(256)
                 if reverse :
                     self.__cmap = self.__cmap.reversed()
-            elif name.upper() in _list_MPLColormaps() :
+            elif xname in _list_MPLColormaps() :
                 self.__cmap = mpl.colormaps[name]
                 if reverse :
                     self.__cmap = self.__cmap.reversed()
-            elif name.upper() in _list_MPLColors() :
+            elif xname.lower() in _list_MPLColors() :
                 self.__cmap = sns.light_palette(
-                    _get_MPLColors(name),reverse=reverse,as_cmap=True)
+                    _get_MPLColors(name.lower()),reverse=reverse,as_cmap=True)
             else:
                 raise ValueError("color name not found !")
     @property
@@ -133,7 +137,7 @@ class ColormapSZ(object) :
         plt.subplots_adjust(top=0.95, bottom=0.05, left=0.01, right=0.99)
         plt.subplot(111)
         plt.axis('off')
-        plt.imshow(a, aspect='auto', cmap=self, origin='lower')
+        plt.imshow(a, aspect='auto', cmap=self.__cmap, origin='lower')
         plt.show()
 
 
@@ -307,13 +311,15 @@ class bullet(object):
 class chinaMap(object) :
     """
     中国地图的热力图绘制
+    fonts : 字体设定。可以使用`typst fonts`进行字体名称查询。
+            常用的有：微软雅黑（Microsoft YaHei）、黑体（SimHei）、宋体（SimSun）、得意黑（Smiley Sans）
     """
     MAP_PROJECTION = ["NormalChina", "Mercator", "PlateCarree"]
     def __init__(self, data:pl.DataFrame|pd.DataFrame, 
                  place:str|None = None, value:str|None = None, 
                  nbin:list|int|bool = True, vmin:float|str = 'auto', vmax:float|str = 'auto', 
-                 cmap:str|tuple = "BlGrYeOrReVi200",
-                 figsize:tuple[int|float] = (10, 6), nine_line:bool|str = True,
+                 cmap:str|tuple = "BlGrYeOrReVi200", 
+                 figsize:tuple[int|float] = (10, 6), nine_line:bool = True, 
                  map_projection:str = "NormalChina") -> None :
         self.__oridata = pl.from_dataframe(data) if isinstance(data, pd.DataFrame) else data
         if isinstance(nine_line,str):
@@ -341,14 +347,18 @@ class chinaMap(object) :
         self.__fig = None
         self.__main_ax = None
         self.__mini_ax = None
+        self.__cmap = None
+        self.__norm = None
         self.__plot_config = {
             "font" : None,
             "figsize" : figsize,
             "nine_line" : nine_line,
             "cmap_name" : cmap, 
             "nbin" : nbin,
-            "vmin" : self.__oridata[value].min() if vmin == 'auto' else vmin,
-            "vmax" : self.__oridata[value].max() if vmax == 'auto' else vmax,
+            "bins" : None,
+            "labels" : None,
+            "vmin" : math.floor(self.__oridata[value].min()) if vmin == 'auto' else vmin,
+            "vmax" : math.ceil(self.__oridata[value].max()) if vmax == 'auto' else vmax,
             "main_extent":(78, 134, 14, 55), # 用于控制地图的截取(左右下上)(经纬度)
             "mini_extent":(105, 120, 2, 25), # 用于控制地图的截取(左右下上)(经纬度)
         }
@@ -376,33 +386,104 @@ class chinaMap(object) :
                 self.__plot_config[key] = value
             else :
                 raise ValueError("{}参数错误".format(key))
-    def fitted_colormap(self, colormap:str|list|None = None) -> None :
-        pass
+    def set_keydata(self, place:str, value:str|None = None, 
+                    replace_data:pd.DataFrame|pl.DataFrame|None = None) -> None :
+        """
+        设置绘图的关键数据。也可以在这时候替换数据。
+        """
+        if replace_data is not None :
+            if isinstance(replace_data, pd.DataFrame) :
+                self.__oridata = pl.from_dataframe(replace_data)
+            elif isinstance(replace_data, pl.DataFrame) :
+                self.__oridata = replace_data
+            else :
+                raise ValueError("replace_data参数错误")
+            self.__usedata = pl.DataFrame()
+        if place is None or place == "" or place not in self.__oridata.columns:
+            raise ValueError("place参数错误！必须给出有效数据！")
+        if not self._checkData() :
+            if value is None :
+                self.__usedata = self.__oridata.group_by(place).agg(
+                    pl.col(place).count().alias("count"))
+            else :
+                self.__usedata = self.__oridata.select(
+                    pl.col([place,value]))
+    def _checkData(self) -> bool :
+        """
+        检查数据是否准备完毕。
+        """
+        if self.__usedata.is_empty() :
+            return False
+        else :
+            return True
+    def setting_colors(self, colormap:str|list|None = None) -> None :
+        """
+        还可以在设定颜色时，再次修改colormap。
+        根据绘图的预设情况，完成颜色的酌定和Normal化设定。
+        """
+        if colormap is None :
+            self.__cmap = ColormapSZ(name = self.__plot_config["cmap_name"])
+        else :
+            self.__cmap = ColormapSZ(name = colormap)
+            self.__plot_config["cmap_name"] = colormap
+        if isinstance(self.__plot_config["nbin"], list) :
+            xn = len(self.__plot_config["nbin"]) -1
+            self.__plot_config["bins"] = self.__plot_config["nbin"]
+        else :
+            xn = 5 if isinstance(self.__plot_config["nbin"],bool) else self.__plot_config["nbin"]
+            widthTMP = self.__plot_config['vmax']-self.__plot_config['vmin']
+            gap = int(widthTMP/xn)
+            self.__plot_config["bins"] = [x for x in range(self.__plot_config['vmin'],self.__plot_config['vmax']+gap,gap)]
+        bins = self.__plot_config["bins"]
+        if self.__plot_config["labels"] is None :
+            self.__plot_config["labels"] = [f'{bins[i]} - {bins[i + 1]}' for i in range(xn)]
+        if isinstance(self.__plot_config["nbin"], bool) :
+            if self.__plot_config["nbin"] :
+                self.__norm = mcolor.BoundaryNorm(bins, xn)
+            else:
+                self.__norm = mcolor.Normalize(self.__plot_config['vmin'],
+                                               self.__plot_config['vmax'], 
+                                               clip=True)
+        else :
+            self.__norm = mcolor.BoundaryNorm(bins, xn)
     def preDrawing(self) -> None :
+        """
+        正是计划图前的准备过程。生成必要的画布。
+        """
         if self.__plot_config["font"] is not None :
             plt.rcParams['font.family'] = self.__plot_config["font"]
         self.__fig = plt.figure(figsize=self.__plot_config["figsize"])
         self.__main_ax = self.__fig.add_subplot(projection=self.__map_crs)
-        self.__main_ax.set_extent((78, 134, 14, 55), self.__data_crs)
+        self.__main_ax.set_extent(self.__plot_config["main_extent"], self.__data_crs)
         if self.__plot_config["nine_line"] :
             fplt.add_nine_line(self.__main_ax, lw=0.5)
         self.__main_ax.axis('off')
-        if self.__plot_config["nine_line"] == "mini" :
+        if self.__plot_config["nine_line"]:
             self.__mini_ax = fplt.add_mini_axes(self.__main_ax)
-            self.__mini_ax.set_extent((105, 120, 2, 25), self.__data_crs)
+            self.__mini_ax.set_extent(self.__plot_config["mini_extent"], self.__data_crs)
             fplt.add_nine_line(self.__mini_ax, lw=0.5)
-    def plot_province(self) -> None :
+    def plot_province(self, **kwags) -> None :
+        """
+        **kwags : https://matplotlib.org/stable/api/collections_api.html
+        """
         if self.__main_ax is None :
-            raise ValueError("请先调用drawing方法，完成绘图准备。")
+            raise ValueError("请先调用predrawing方法，完成绘图准备。")
         # 字体描边，便于文字识别
         path_effects = [Stroke(linewidth=1.5, foreground='w'), Normal()]
         # 绘图
-        for ax in [self.__main_ax, self.__mini_ax]:
+        defautKwags = {"ec":'k', "lw":0.4}
+        defautKwags.update(kwags)
+        axsList = [self.__main_ax, self.__mini_ax] if self.__mini_ax is not None else [self.__main_ax]
+        if self.__plot_config["nbin"] is False :
+            cm_n = self.__cmap.colormap()
+        else:
+            cm_n = self.__cmap.resampled(len(self.__plot_config["labels"]))
+        for ax in axsList:
             fplt.add_geoms(
                 ax, self.__usedata[self.__selName[0]].to_list(), 
                 array=self.__usedata[self.__selName[1]].to_list(), 
-                cmap=self.__plot_config["cmap"], norm=self.__plot_config["norm"], 
-                ec='k', lw=0.4
+                cmap=cm_n, norm=self.__norm, 
+                **defautKwags
             )
             for text in fplt.label_cn_province(ax).texts:
                 text.set_path_effects(path_effects)
@@ -435,7 +516,7 @@ class chinaMap(object) :
                 scale_bar.set_xticks(miSegs, minor=True)
         else:
             bins = length / (segments - 1)
-            segList = [int(x) for x in range(0,(length + bins), bins)]
+            segList = [x for x in range(0,int(length + bins), int(bins))]
             if segments % 2 == 0 :
                 scale_bar.set_xticks(segList)
             else :
@@ -453,31 +534,60 @@ class chinaMap(object) :
         """
         if style not in ["colorbar_v","colorbar_h","spiltbar"]:
             raise ValueError("style参数错误")
-        if title_fontsize in ['xx-small', 'x-small', 'small', 
+        if title_fontsize not in ['xx-small', 'x-small', 'small', 
                               'medium', 'large', 'x-large', 'xx-large'] :
             raise ValueError("title_fontsize参数错误")
         if isinstance(loc,str) and loc not in ['best','upper right','upper left','lower left',
                                                'lower right','right','center left','center right',
                                                'lower center','upper center','center'] :
             raise ValueError("loc参数错误")
-        
         if style == "colorbar_v" :
-            pass
+            if isinstance(loc, tuple) :
+                xloc = "lower left"
+            else :
+                xloc = loc
+            cbax = inset_axes(self.__main_ax, 
+                              width="3%", height="25%", loc=xloc,
+                              axes_kwargs = {"frame_on" : frameon})
+            if self.__plot_config["nbin"] is False :
+                cmn = self.__cmap.colormap()
+            else :
+                cmn = self.__cmap.resampled(len(self.__plot_config["labels"]))
+            cbfig = plt.colorbar(mcm.ScalarMappable(norm=self.__norm,cmap=cmn), cax=cbax)
+            cbfig.set_label(title, fontsize = title_fontsize, rotation=270)
+            xtick = np.array(self.__plot_config["bins"][:-1])
+            xtick += int((xtick[1]-xtick[0])/2)
+            cbfig.set_ticks(xtick, labels=self.__plot_config["labels"])
         elif style == "colorbar_h" :
-            pass
+            if isinstance(loc, tuple) :
+                xloc = "lower left"
+            else :
+                xloc = loc
+            cbax = inset_axes(self.__main_ax, 
+                              width="25%", height="5%", loc=xloc,
+                              axes_kwargs = {"frame_on" : frameon})
+            if self.__plot_config["nbin"] is False :
+                cmn = self.__cmap.colormap()
+            else :
+                cmn = self.__cmap.resampled(len(self.__plot_config["labels"]))
+            cbfig = plt.colorbar(mcm.ScalarMappable(norm=self.__norm,cmap=cmn), 
+                                 cax=cbax, ticks=self.__plot_config["bins"],
+                                 orientation="horizontal")
+            cbfig.set_label(title, fontsize = title_fontsize, loc="center")
         else :
             patches = []
-            for color, label in zip(colors, labels):
+            for color, label in zip(self.__cmap.getListColors(len(self.__plot_config["labels"])), 
+                                    self.__plot_config["labels"]):
                 patch = mpatches.Patch(fc=color, ec='k', lw=0.5, label=label)
                 patches.append(patch)
-        self.__main_ax.legend(
-            handles=patches,
-            loc=loc,
-            frameon=frameon,
-            handleheight=handleheight,
-            fontsize=title_fontsize,
-            title=title,
-        )
+            self.__main_ax.legend(
+                handles=patches,
+                loc=loc,
+                frameon=frameon,
+                handleheight=handleheight,
+                fontsize=title_fontsize,
+                title=title,
+            )
     def __enter__(self) -> Self :
         return self
     def __exit__(self, exc_type, exc_value, exc_tb) -> None :
@@ -501,3 +611,22 @@ class chinaMap(object) :
         关闭绘图窗口
         """
         plt.close(self.__fig)
+
+
+if __name__ == "__main__" :
+    import frykit.shp as fshp
+    # 构建假数据
+    provinces = fshp.get_cn_province()
+    data = np.linspace(0, 100, len(provinces))
+    data = pl.DataFrame({"province":provinces,"data":data})
+    # 画图
+    cmtest = chinaMap(data=data, place="province",value="data")
+    cmtest.set_configs(font = "Microsoft YaHei")
+    cmtest.setting_colors(colormap="Blues")
+    cmtest.preDrawing()
+    cmtest.plot_province()
+    cmtest.add_compass()
+    cmtest.add_scalebar()
+    cmtest.add_legend(style="colorbar_h")
+    cmtest.save("D:/picture.png")
+    cmtest.close()

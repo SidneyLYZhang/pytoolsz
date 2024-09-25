@@ -13,6 +13,7 @@
 brotli==1.1.0
     # via py7zr
 cartopy==0.23.0
+    # via frykit
     # via pytoolsz
 certifi==2024.8.30
     # via pyproj
@@ -34,6 +35,8 @@ filelock==3.15.4
     # via torch
 fonttools==4.53.1
     # via matplotlib
+frykit==0.6.7
+    # via pytoolsz
 fsspec==2024.6.1
     # via torch
 holidays==0.55
@@ -73,6 +76,7 @@ numpy==2.1.0
     # via cmaps
     # via cmdstanpy
     # via contourpy
+    # via frykit
     # via matplotlib
     # via pandas
     # via patsy
@@ -94,6 +98,7 @@ packaging==24.1
 pandas==2.2.2
     # via cmdstanpy
     # via country-converter
+    # via frykit
     # via prophet
     # via seaborn
     # via statsmodels
