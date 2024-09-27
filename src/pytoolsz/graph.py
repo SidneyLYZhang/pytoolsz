@@ -39,7 +39,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patheffects import Normal, Stroke
 
-__all__ = ["ColormapSZ", "bullet", "chinaMap"]
+__all__ = ["ColormapSZ", "bullet", "chinaMap", "heatmapSZ"]
 
 def _list_cmaps() -> list :
     attributes = inspect.getmembers(cmaps, lambda _: not (inspect.isroutine(_)))
@@ -87,6 +87,19 @@ def _checkList(txt:str, aList:list) -> bool :
         if txt in i :
             return True
     return False
+
+def get_Fonts(subName:str|None = None, n:int = 5) -> list :
+    """
+    获取字体列表，或查询某一个字体
+    """
+    fontsList = [i.name for i in mpl.font_manager.fontManager.ttflist]
+    fontsList = list(set(fontsList))
+    if subName is not None :
+        selList = process.extract(subName, fontsList, limit = n)
+        res = [i[0] for i in selList]
+    else :
+        res = fontsList
+    return res
 
 
 class ColormapSZ(object) :
@@ -320,7 +333,7 @@ class bullet(object):
 class chinaMap(object) :
     """
     中国地图的热力图绘制
-    fonts : 字体设定。可以使用`typst fonts`进行字体名称查询。
+    fonts : 字体设定。可以使用`get_Fonts`方法进行字体名称查询。
             常用的有：微软雅黑（Microsoft YaHei）、黑体（SimHei）、宋体（SimSun）、得意黑（Smiley Sans）
     """
     MAP_PROJECTION = ["NormalChina", "Mercator", "PlateCarree"]
@@ -630,6 +643,206 @@ class chinaMap(object) :
         """
         plt.show()
     def close(self) -> None :
+        """
+        关闭绘图窗口
+        """
+        plt.close(self.__fig)
+
+def _set_axis_font(ax:mpl.axes.Axes, 
+                    font:str, fontsize:float) -> None :
+    for i in ax.get_ticklabels():
+        i.set_fontsize(fontsize)
+        i.set_fontname(font)
+
+def _is_darkcolor(color:str|tuple|list|None = None, 
+                  cmap:str|ColormapSZ|None = None, N:int|None = 10) -> bool|list[bool]|None :
+    """
+    判断颜色是否为深色
+    """
+    if color is None and cmap is None :
+        return None
+    else :
+        if color is not None :
+            if isinstance(color, list) :
+                cList = [mcolor.to_rgb(i) for i in color]
+            else :
+                cList = [mcolor.to_rgb(color)]
+            xList = [sum(np.array(i)*np.array([0.299,0.587,0.114]))*256 for i in cList]
+            xList = [(True if i<128 else False) for i in xList]
+            if len(xList) == 1 :
+                xList = xList[0]
+        if cmap is not None :
+            if isinstance(cmap, str) :
+                colormap = sns.palettes.get_colormap(cmap).resampled(N)
+            else:
+                colormap = cmap.resampled(N)
+            cList = [mcolor.to_rgb(colormap(i)) for i in range(N)]
+            xList = [sum(np.array(i)*np.array([0.299,0.587,0.114]))*256 for i in cList]
+            xList = [(True if i<128 else False) for i in xList]
+        return xList
+
+
+class heatmapSZ(object) :
+    """
+    传统热力图。加上常用的图形组合。
+    主要用于绘制热力图与分布图的组合方案，也可单纯作为热力图绘制使用。
+    """
+    def __init__(self, data:pd.DataFrame,
+                 vmin:float|None = None, vmax:float|None = None, 
+                 xlabel:str|None = None, ylabel:str|None = None,
+                 cmap_name:tuple|str|ColormapSZ|None = None,
+                 robust:bool = False, figsize:tuple = (16,9),
+                 annot:any = None, fmt:str ='.2f', annot_kws:dict|None = None, 
+                 linewidths:float = 0, linecolor:str|tuple = 'white',
+                 add_plot_data:pl.DataFrame|pd.DataFrame|None = None,
+                 add_plot_kws:dict|None = None,
+                 cbar:bool = False, cbar_kws:dict|None = None, 
+                 space:float = 0.025) -> None:
+        """
+        data: 数据表
+        vmin, vmax: 热力图数据范围，可选设定，默认自动确定范围
+        cmap_name: 颜色映射表名称，也可以为任意颜色。使用非ColormapSZ的颜色时，将启用seaborn的颜色系统。
+        robust: 如果 True 和 vmin 或 vmax 不存在，则使用稳健分位数而不是极值计算颜色图范围。
+        annot: 热力图上的数值，默认为None。
+        fmt: 热力图上的数值格式，默认为'.2g'。
+        annot_kws: 热力图上的数值设定，默认为None。
+        linewidths: 热力图上的线宽，默认为0。
+        linecolor: 热力图上的线颜色，默认为'white'。
+        add_plot_data: 绘制额外数据，默认为None。
+        add_plot_kws: 额外数据绘制设定，默认为None。
+        space: 子图间距，默认0.025。
+        """
+        if cmap_name is not None :
+            if isinstance(cmap_name, ColormapSZ) :
+                cmap_name = cmap_name.colormap()
+            else :
+                try:
+                    cmap_name = sns.light_palette(cmap_name, as_cmap=True)
+                except :
+                    raise ValueError("颜色映射`cmap_name`设定错误！")
+        else :
+            cmap_name = "YlGnBu"
+        self.__fig = plt.figure(figsize=figsize)
+        if add_plot_data is not None :
+            self.__fig.subplots_adjust(wspace=space)
+        self.__data = data
+        self.__Labels = [i if i is not None else "" for i in (xlabel, ylabel)]
+        self.__annot_kws = {"size": 23, "font":"Smiley Sans"}
+        self.__annot_kws.update(annot_kws if annot_kws else {})
+        annot_kws = self.__annot_kws
+        self.__heatmap_config = {
+            "vmin" : vmin, "vmax" : vmax,
+            "cmap" : cmap_name,
+            "robust" : robust,
+            "annot" : annot, "fmt" : fmt, 
+            "annot_kws" : annot_kws,
+            "linewidths" : linewidths, "linecolor" : linecolor
+        }
+        self.__leftspan = 6
+        self.__rightspan = 1
+        if add_plot_data is None :
+            self.__heatmap_config["cbar"] = cbar
+            self.__heatmap_config["cbar_kws"] = cbar_kws
+        else :
+            self.__heatmap_config["cbar"] = False
+            self.__heatmap_config["cbar_kws"] = None
+        self.__xlabel_kws = {"font":'Source Han Sans SC', "fontsize":16}
+        self.__ylabel_kws = {"font":'Source Han Sans SC', "fontsize":12}
+        self.__title_kws = {"loc":(0.57,1.1),"fontstyle":{"font":'Source Han Sans SC', "fontsize":22}}
+        self.__add_data = add_plot_data 
+        self.__add_plot_type = "barplot"
+        self.__add_plot_kws = {
+            "plot_kws" : {"x":self.__data[self.__data.columns[0]].to_list(),
+                          "hue":self.__data.index.to_list(),
+                          "palette":"Blues_r",
+                          "legend":False, "width":1,},
+            "title" : "",
+            "xlabelstyle" : {"pad":15, "font":'Source Han Sans SC', "fontsize":18},
+            "label_type" : "center",
+        }
+        if "plot_kws" in add_plot_kws.keys() :
+            self.__add_plot_kws["plot_kws"].update(add_plot_kws["plot_kws"])
+            self.__add_plot_kws["plot_kws"]["x"] = self.__add_data[add_plot_kws["plot_kws"]["x"]].to_list()
+        if "title" in add_plot_kws.keys() :
+            self.__add_plot_kws["title"] = add_plot_kws["title"]
+        if "xlabelstyle" in add_plot_kws.keys() :
+            self.__add_plot_kws["xlabelstyle"].update(add_plot_kws["xlabelstyle"])
+        if "label_type" in add_plot_kws.keys() :
+            self.__add_plot_kws["label_type"] = add_plot_kws["label_type"]
+    def set_heatmap_config(self, **kws) -> None :
+        self.__heatmap_config.update(kws)
+    def set_annot_config(self, **kws) -> None :
+        """https://matplotlib.org/stable/api/text_api.html"""
+        self.__annot_kws.update(kws)
+        self.__heatmap_config["annot_kws"] = self.__annot_kws
+    def set_xlabel_config(self, **kws) -> None :
+        """https://matplotlib.org/stable/api/text_api.html"""
+        self.__xlabel_kws.update(kws)
+    def set_ylabel_config(self, **kws) -> None :
+        """https://matplotlib.org/stable/api/text_api.html"""
+        self.__ylabel_kws.update(kws)
+    def set_title_config(self, **kws) -> None :
+        """https://matplotlib.org/stable/api/text_api.html"""
+        res = {}
+        res.update(kws)
+        if "loc" in kws :
+            if kws["loc"].lower() in ["top","bottom","top left","bottom left"] :
+                if kws["loc"].lower() == "top" :
+                    res["loc"] = (0.57,1.1)
+                if kws["loc"].lower() == "bottom" :
+                    res["loc"] = (0.57,0)
+                if kws["loc"].lower() == "top left" :
+                    res["loc"] = (0,1.1)
+                if kws["loc"].lower() == "bottom left" :
+                    res["loc"] = (0,0)
+            elif isinstance(kws["loc"],tuple) :
+                res["loc"] = kws["loc"]
+            else :
+                raise ValueError("loc参数错误")
+        self.__title_kws.update(res)
+    def set_leftspan(self, span:int) -> None :
+        self.__leftspan = span
+    def set_rightspan(self, span:int) -> None :
+        self.__rightspan = span
+    def plot(self) -> None :
+        if self.__add_data is not None :
+            colsLen = self.__leftspan + self.__rightspan
+            ax1 = plt.subplot2grid((1, colsLen), (0, 0), colspan=self.__leftspan)
+            sns.heatmap(self.__data, ax=ax1, **self.__heatmap_config)
+            ax1.set(xlabel=self.__Labels[0], ylabel=self.__Labels[1])
+            ax1.xaxis.tick_top()
+            ax1.xaxis.get_label().set(**self.__title_kws["fontstyle"])
+            ax1.xaxis.set_label_coords(*self.__title_kws["loc"])
+            ax1.yaxis.get_label().set(**self.__title_kws["fontstyle"])
+            _set_axis_font(ax1.xaxis, **self.__xlabel_kws)
+            _set_axis_font(ax1.yaxis, **self.__ylabel_kws)
+            ax2 = plt.subplot2grid((1, colsLen), (0,self.__leftspan))
+            if self.__add_plot_kws["label_type"]=="edge":
+                colors = ["#000000"] * len(self.__add_plot_kws["plot_kws"]["hue"])
+            else:
+                colors = [("#000000" if i else "#000000") for i in _is_darkcolor(
+                                                            cmap=self.__add_plot_kws["plot_kws"]["palette"],
+                                                            N=len(self.__add_plot_kws["plot_kws"]["hue"]))]
+            tax = getattr(sns,self.__add_plot_type)(ax=ax2, **self.__add_plot_kws["plot_kws"])
+            for i,data in enumerate(tax.containers):
+                ax2.bar_label(data,label_type=self.__add_plot_kws["label_type"], 
+                              color=colors[i], **self.__annot_kws)
+            ax2.set_title(self.__add_plot_kws["title"],
+                          **self.__add_plot_kws["xlabelstyle"])
+            ax2.set_axis_off()
+        else :
+            sns.heatmap(self.__data, ax=self.__fig.gca(), **self.__heatmap_config)
+    def save(self, saveto:str|Path|None = None) :
+        """
+        保存图片
+        """
+        pass
+    def show(self) :
+        """
+        显示绘图结果
+        """
+        plt.show()
+    def close(self) :
         """
         关闭绘图窗口
         """
