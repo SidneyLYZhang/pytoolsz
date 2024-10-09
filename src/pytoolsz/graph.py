@@ -39,7 +39,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patheffects import Normal, Stroke
 
-__all__ = ["ColormapSZ", "bullet", "chinaMap", "heatmapSZ"]
+__all__ = ["ColormapSZ", "bullet", "chinaMap", "optimize_fonts", "heatmapSZ"]
 
 def _list_cmaps() -> list :
     attributes = inspect.getmembers(cmaps, lambda _: not (inspect.isroutine(_)))
@@ -100,6 +100,22 @@ def get_Fonts(subName:str|None = None, n:int = 5) -> list :
     else :
         res = fontsList
     return res
+
+def optimize_fonts(Fonts:str|list|None = None) -> None :
+    """
+    优化绘图字体的显示
+    """
+    nomarl = ["Source Han Sans SC","Segoe UI","Leelawadee UI"]
+    if Fonts is not None :
+        if isinstance(Fonts, str) :
+            nomarl.append(Fonts)
+            nomarl = list(set(nomarl))
+        elif isinstance(Fonts, list) :
+            nomarl.extend(Fonts)
+            nomarl = list(set(nomarl))
+        else :
+            raise ValueError("Fonts must be str or list!")
+    mpl.rcParams["font.family"] = nomarl
 
 
 class ColormapSZ(object) :
@@ -725,6 +741,7 @@ class heatmapSZ(object) :
         self.__fig = plt.figure(figsize=figsize)
         if add_plot_data is not None :
             self.__fig.subplots_adjust(wspace=space)
+        mpl.rcParams["font.family"] = ["Source Han Sans SC","Segoe UI","Leelawadee UI"]
         self.__data = data
         self.__Labels = [i if i is not None else "" for i in (xlabel, ylabel)]
         self.__annot_kws = {"size": 23, "font":"Smiley Sans"}
@@ -825,7 +842,8 @@ class heatmapSZ(object) :
                                                             N=len(self.__add_plot_kws["plot_kws"]["hue"]))]
             tax = getattr(sns,self.__add_plot_type)(ax=ax2, **self.__add_plot_kws["plot_kws"])
             for i,data in enumerate(tax.containers):
-                ax2.bar_label(data,label_type=self.__add_plot_kws["label_type"], 
+                ax2.bar_label(data,label_type=self.__add_plot_kws["label_type"],
+                              fmt = self.__heatmap_config["fmt"], 
                               color=colors[i], **self.__annot_kws)
             ax2.set_title(self.__add_plot_kws["title"],
                           **self.__add_plot_kws["xlabelstyle"])
