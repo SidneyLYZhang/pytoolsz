@@ -843,7 +843,7 @@ class heatmapSZ(object) :
             tax = getattr(sns,self.__add_plot_type)(ax=ax2, **self.__add_plot_kws["plot_kws"])
             for i,data in enumerate(tax.containers):
                 ax2.bar_label(data,label_type=self.__add_plot_kws["label_type"],
-                              fmt = self.__heatmap_config["fmt"], 
+                              fmt = "{{:{}}}".format(self.__heatmap_config["fmt"]), 
                               color=colors[i], **self.__annot_kws)
             ax2.set_title(self.__add_plot_kws["title"],
                           **self.__add_plot_kws["xlabelstyle"])

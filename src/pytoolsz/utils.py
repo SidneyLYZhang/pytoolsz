@@ -16,6 +16,7 @@
 # See the Mulan PSL v2 for more details.
 
 import re
+import string
 
 from random import randint
 from rich.console import Console
@@ -61,3 +62,8 @@ def print_special(data:any, mode:str = "auto",
         println(data, color=color, width=width)
     else:
         raise ValueError("mode must be 'auto','markdown', 'rainbow' or 'color-(color)'")
+
+def szformat(value:any, fmt:str) -> str :
+    """格式化输出转换"""
+    tft = string.Formatter()
+    return tft.format_field(value, fmt)
