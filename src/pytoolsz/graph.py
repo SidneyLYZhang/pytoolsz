@@ -644,7 +644,8 @@ class chinaMap(object) :
         return self
     def __exit__(self, exc_type, exc_value, exc_tb) -> None :
         self.close()
-    def save(self, saveto:str|Path|None = None) -> None :
+    def save(self, saveto:str|Path|None = None,
+             transparent:bool = True) -> None :
         """
         保存图片
         """
@@ -652,7 +653,7 @@ class chinaMap(object) :
             sPlace = Path("./picture.png")
         else :
             sPlace = Path(saveto)
-        fplt.savefig(sPlace)
+        fplt.savefig(sPlace, transparent=transparent)
     def show(self) -> None :
         """
         显示绘图结果
@@ -850,11 +851,16 @@ class heatmapSZ(object) :
             ax2.set_axis_off()
         else :
             sns.heatmap(self.__data, ax=self.__fig.gca(), **self.__heatmap_config)
-    def save(self, saveto:str|Path|None = None) :
+    def save(self, saveto:str|Path|None = None,
+             transparent:bool = True) :
         """
         保存图片
         """
-        pass
+        if saveto is None :
+            sPlace = Path("./picture.png")
+        else :
+            sPlace = Path(saveto)
+        fplt.savefig(sPlace, transparent=transparent)
     def show(self) :
         """
         显示绘图结果
