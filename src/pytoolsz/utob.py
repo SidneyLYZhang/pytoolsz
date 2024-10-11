@@ -255,8 +255,11 @@ def read_multiChannel(tarName:str, between_date:list[str], channelNames:list[str
     if schema_overrides is not None :
         tmpData = []
         for xd in data :
+            subdata = xd
             for ke,vd in schema_overrides.items() :
-                tmpData.append(xd.with_columns([pl.col(ke).cast(vd)]))
+                if ke in xd.columns :
+                    subdata = subdata.with_columns([pl.col(ke).cast(vd)])
+            tmpData.append(subdata)
         data = tmpData
     if group_by is not None :
         if isinstance(group_by, str) :
