@@ -51,19 +51,33 @@ class compression(object):
                 print("\n".join(txt))
         self.__password = password
     def _do7zcompress(self, filename:str, src:list[str|Path]) -> None :
-        with py7zr.SevenZipFile(filename, 'w', dereference=True, 
-                                header_encryption = True, 
-                                password = self.__password) as archive:
-            for xf in src:
-                if Path(xf).is_dir() :
-                    archive.writeall(xf)
-                else :
-                    archive.write(xf)
-                if not self.__keep_data :
-                    try :
-                        os.remove(xf)
-                    except :
-                        shutil.rmtree(xf)
+        if self.__password is None :
+            with py7zr.SevenZipFile(filename, 'w', dereference=True, 
+                                    header_encryption = True) as archive:
+                for xf in src:
+                    if Path(xf).is_dir() :
+                        archive.writeall(xf)
+                    else :
+                        archive.write(xf)
+                    if not self.__keep_data :
+                        try :
+                            os.remove(xf)
+                        except :
+                            shutil.rmtree(xf)
+        else :
+            with py7zr.SevenZipFile(filename, 'w', dereference=True, 
+                                    header_encryption = True, 
+                                    password = self.__password) as archive:
+                for xf in src:
+                    if Path(xf).is_dir() :
+                        archive.writeall(xf)
+                    else :
+                        archive.write(xf)
+                    if not self.__keep_data :
+                        try :
+                            os.remove(xf)
+                        except :
+                            shutil.rmtree(xf)
     def _dozipcompress(self, filename:str, src:list[str|Path]) -> None :
         with zipfile.ZipFile(filename, 'w', compression=zipfile.ZIP_BZIP2,
                              compresslevel = 9) as archive:
