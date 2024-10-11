@@ -22,8 +22,8 @@ from pytoolsz.pretools import (
     get_interval_dates, 
     near_date,
     last_date)
-from collections.abc import Mapping,Iterable
-from polars._typing import IntoExpr
+from collections.abc import Mapping,Iterable,Sequence
+from polars._typing import (IntoExpr, PolarsDataType)
 from pendulum import interval, DateTime
 
 import re
@@ -243,7 +243,8 @@ def read_multiChannel(tarName:str, between_date:list[str], channelNames:list[str
                       rootpath:Path|None = None,
                       compare:bool = False, 
                       group_by:str|Mapping[str,IntoExpr|Iterable[IntoExpr]|Mapping[str,IntoExpr]]|None = None,
-                      convert:str = "polars"
+                      convert:str = "polars",
+                      schema_overrides: Mapping[str, PolarsDataType] | Sequence[PolarsDataType] | None = None
                     ) -> pl.DataFrame|pd.DataFrame:
 
     data = []
@@ -251,6 +252,12 @@ def read_multiChannel(tarName:str, between_date:list[str], channelNames:list[str
         data.append(read_YouTube_zipdata(tarName, between_date, chs,  
                                          dataName, rootpath, lastnum, compare))
     data = [x.get() for x in data]
+    if schema_overrides is not None :
+        tmpData = []
+        for xd in data :
+            for ke,vd in schema_overrides.items() :
+                tmpData.append(xd.with_columns([pl.col(ke).cast(vd)]))
+        data = tmpData
     if group_by is not None :
         if isinstance(group_by, str) :
             data = pl.concat(data).group_by(group_by).agg(cs.numeric().sum())
@@ -263,6 +270,8 @@ def read_multiChannel(tarName:str, between_date:list[str], channelNames:list[str
                     data = data.group_by(key).agg(*value)
                 else :
                     data = data.group_by(key).agg(value)
+    else :
+        data = pl.concat(data)
     return data if convert == "polars" else data.to_pandas()
 
 
