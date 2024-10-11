@@ -101,25 +101,18 @@ class compression(object):
         src:源文件路径。
         dst:目标文件路径。
         """
-        notChange = isinstance(src, list)
-        soures = src if notChange else [src]
+        soures = src if isinstance(src, list) else [src]
         tarPath = Path(dst)
         if tarPath.is_dir() :
             if not tarPath.exists() :
                 tarPath.mkdir(parents=True)
         else :
             raise ValueError("dst must be a directory!")
-        if not notChange :
-            oriPath = os.getcwd()
-            switchPath = Path(src).absolute().parent
-            os.chdir(switchPath)
         xfname = '.'.join([cfilename, self.__mode])
         if self.__mode == '7z' :
             self._do7zcompress(tarPath/xfname, soures)
         else :
             self._dozipcompress(tarPath/xfname, soures)
-        if not notChange :
-            os.chdir(oriPath)
     def extract(self, src:str|Path, dst:str|Path) -> None :
         """
         解压缩文件。
