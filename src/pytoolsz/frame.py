@@ -103,12 +103,6 @@ class szDataFrame(object):
     def append(self, other:Self) -> Self:
         data = self.__data.vstack(other.get())
         return szDataFrame(filepath=self.__filepath, from_data=data)
-    def into_timeseries(self, date:str, value:str) -> pd.DataFrame :
-        return self.__data.set_index(date).to_pandas()[value]
-    def into_training(self, values:list[str], target:str, 
-                      index:str|None = None, into_ts:bool = False,
-                      N_test:int = 10) -> pd.DataFrame :
-        pass
 
 
 def zipreader(zipFilepath:Path|str, subFile:str, **kwgs) -> szDataFrame:

@@ -17,14 +17,16 @@
 
 import re
 import string
+import pendulum as plm
 
+from collections.abc import Iterable
 from random import randint
 from rich.console import Console
 from rich.highlighter import Highlighter
 from rich.markdown import Markdown
 
 __all__ = [
-    "println", "print_special"
+    "println", "print_special", "szformat", "now", "isSubset"
 ]
 
 class RainbowHighlighter(Highlighter):
@@ -67,3 +69,22 @@ def szformat(value:any, fmt:str) -> str :
     """格式化输出转换"""
     tft = string.Formatter()
     return tft.format_field(value, fmt)
+
+def now(sformat:str|bool|None = None) -> plm.DateTime|str:
+    """
+    获取时间函数。
+    1. 如果 sformat 为 False，则返回 pendulum.DateTime 类型
+    2. 如果 sformat 为 True，则返回“日期时间”字符串
+    3. 如果 sformat 为字符串，则返回字符串，且格式为 sformat
+    4. 如果 sformat 为 None，则返回“无标识日期时间”字符串
+    """
+    dtx = plm.now()
+    if isinstance(sformat, bool) :
+        return dtx.format("YYYY-MM-DD HH:mm:ss") if sformat else dtx
+    else :
+        fmt = sformat if sformat else "YYYYMMDD_HHmmss"
+        return dtx.format(fmt)
+
+def isSubset(superset:Iterable, subset:Iterable) -> bool :
+    """判断一个集合是否是另一个集合的子集。"""
+    return all(item in superset for item in subset)

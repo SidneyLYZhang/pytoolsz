@@ -872,6 +872,18 @@ class heatmapSZ(object) :
         """
         plt.close(self.__fig)
 
+class worldHeatMap(object):
+    """
+    世界地图下的国家数据热力图
+    使用 Cartopy 作为底层。
+    输入参数：
+    data:pl.DataFrame|pd.DataFrame, 输入数据，至少包含两个字段，第一个字段为国家名，第二个字段为数据值
+    
+    """
+    def __init__(self, data:pl.DataFrame|pd.DataFrame):
+        self.__data = data
+        pass
+
 
 if __name__ == "__main__" :
     import frykit.shp as fshp

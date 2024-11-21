@@ -28,6 +28,7 @@ import pytoolsz.handlepath as handlepath
 import pytoolsz.ppTrans as ppTrans
 import pytoolsz.utils as utils
 import pytoolsz.graph as graph
+import pytoolsz.tsTools as tsTools
 from pytoolsz.saveExcel import (
     saveExcel,
     transColname2Letter
@@ -54,6 +55,7 @@ __all__ = [
     "getreader",
     "just_load",
     "ppTrans",
+    "tsTools",
     "szDataFrame",
     "zipreader",
     "saveExcel",
