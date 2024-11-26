@@ -24,6 +24,8 @@ from tempfile import TemporaryDirectory
 from typing import Self
 from rich import print
 
+from pmdarima.model_selection import train_test_split
+
 __all__ = ["getreader","just_load","szDataFrame","zipreader"]
 
 def getreader(dirfile:Path|str, used_by:str|None = None):
@@ -103,6 +105,11 @@ class szDataFrame(object):
     def append(self, other:Self) -> Self:
         data = self.__data.vstack(other.get())
         return szDataFrame(filepath=self.__filepath, from_data=data)
+    def train_test_split(self, test_size:float|int|None = None, 
+                         train_size:float|int|None = None) -> tuple[Self, Self]:
+        train, test = train_test_split(self.__data, test_size, train_size)
+        return szDataFrame(filepath=self.__filepath, from_data=train), \
+               szDataFrame(filepath=self.__filepath, from_data=test)
 
 
 def zipreader(zipFilepath:Path|str, subFile:str, **kwgs) -> szDataFrame:

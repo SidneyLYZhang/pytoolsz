@@ -35,6 +35,8 @@ cryptography==43.0.1
     # via pdfminer-six
 cycler==0.12.1
     # via matplotlib
+cython==3.0.11
+    # via pmdarima
 et-xmlfile==1.1.0
     # via openpyxl
 filelock==3.15.4
@@ -57,6 +59,9 @@ intel-openmp==2021.4.0
     # via mkl
 jinja2==3.1.4
     # via torch
+joblib==1.4.2
+    # via pmdarima
+    # via scikit-learn
 kiwisolver==1.4.5
     # via matplotlib
 levenshtein==0.26.0
@@ -90,8 +95,10 @@ numpy==2.1.0
     # via matplotlib
     # via pandas
     # via patsy
+    # via pmdarima
     # via prophet
     # via pyarrow
+    # via scikit-learn
     # via scipy
     # via seaborn
     # via shapely
@@ -104,11 +111,13 @@ packaging==24.1
     # via cartopy
     # via cmaps
     # via matplotlib
+    # via pmdarima
     # via statsmodels
 pandas==2.2.2
     # via cmdstanpy
     # via country-converter
     # via frykit
+    # via pmdarima
     # via prophet
     # via seaborn
     # via statsmodels
@@ -125,6 +134,8 @@ pillow==10.4.0
     # via pdfplumber
     # via pytoolsz
     # via torchvision
+pmdarima==2.0.4
+    # via pytoolsz
 polars==1.5.0
     # via pytoolsz
 prophet==1.1.5
@@ -173,10 +184,16 @@ rapidfuzz==3.10.0
     # via levenshtein
 rich==13.7.1
     # via pytoolsz
+scikit-learn==1.5.2
+    # via pmdarima
 scipy==1.14.0
+    # via pmdarima
+    # via scikit-learn
     # via statsmodels
 seaborn==0.13.2
     # via pytoolsz
+setuptools==75.6.0
+    # via pmdarima
 shapely==2.0.6
     # via cartopy
 six==1.16.0
@@ -185,6 +202,7 @@ six==1.16.0
 stanio==0.5.1
     # via cmdstanpy
 statsmodels==0.14.2
+    # via pmdarima
     # via pytoolsz
 sympy==1.13.2
     # via torch
@@ -192,6 +210,8 @@ tbb==2021.13.1
     # via mkl
 texttable==1.7.0
     # via py7zr
+threadpoolctl==3.5.0
+    # via scikit-learn
 time-machine==2.15.0
     # via pendulum
 torch==2.3.1
@@ -207,3 +227,5 @@ typing-extensions==4.12.2
 tzdata==2024.1
     # via pandas
     # via pendulum
+urllib3==2.2.3
+    # via pmdarima

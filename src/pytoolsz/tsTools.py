@@ -24,9 +24,14 @@ import polars as pl
 
 import matplotlib.pyplot as plt
 
+from typing import Self
 from collections.abc import Iterable
 from pytoolsz.frame import szDataFrame
 from pytoolsz.utils import isSubset
+
+from pmdarima.model_selection import train_test_split
+
+__all__ = ["tsFrame"]
 
 class tsFrame(object):
     def __init__(self, data:pl.DataFrame|pd.DataFrame|szDataFrame,
@@ -50,12 +55,56 @@ class tsFrame(object):
                 raise ValueError(f"{covariates} is not a column in data")
         elif isSubset(self.__data.columns, covariates) :
             self.__variables = covariates
+        elif covariates is None :
+            self.__variables = None
         else :
             raise ValueError(f"{covariates} is not a subset of data-columns")
-    def for_prophet(self) -> pd.DataFrame :
-        res = self.__data.select([self.__dt, self.__y]).to_pandas()
-        res.columns = ["ds","y"]
+    def for_prophet(self, cap:str|Iterable|float|None = None, 
+                    floor:str|Iterable|float|None = None) -> pd.DataFrame :
+        if cap is None and floor is None :
+            res = self.__data.select([self.__dt, self.__y]).to_pandas()
+            res.columns = ["ds","y"]
+        if cap is not None and floor is None :
+            if isinstance(cap, str) :
+                res = self.__data.select([self.__dt, self.__y, cap]).to_pandas()
+                res.columns = ["ds","y","cap"]
+            else :
+                res = self.__data.select([self.__dt, self.__y]).to_pandas()
+                res["cap"] = cap
+        if cap is not None and floor is not None :
+            if isinstance(cap, str) and isinstance(floor, str) :
+                res = self.__data.select([self.__dt, self.__y, cap, floor]).to_pandas()
+                res.columns = ["ds","y","cap","floor"]
+            else :
+                res = self.__data.select([self.__dt, self.__y]).to_pandas()
+                res["cap"] = cap
+                res["floor"] = floor
+        if cap is None and floor is not None :
+            raise ValueError("floor must be None when cap is not None")
         return res
-    def plot(self) -> None :
+    def for_auto_arima(self, need_x:bool = False) -> pd.DataFrame|tuple[pd.DataFrame] :
+        res = self.__data.select([self.__dt, self.__y]).to_pandas()
+        if need_x :
+            return res[self.__y],res[self.__dt]
+        else:
+            return res[self.__y]
+    def plot(self, to_show:bool = True) -> None :
         self.__data.plot(x=self.__dt, y=self.__y)
-        plt.show()
+        if to_show :
+            plt.show()
+    def to_polars(self) -> pl.DataFrame :
+        return self.__data
+    def to_pandas(self) -> pd.DataFrame :
+        return self.__data.to_pandas()
+    def __repr__(self) -> str :
+        if self.__variables :
+            return f"tsFrame(\n\tdata{self.__data.shape}, \n\tdt={self.__dt}, \n\ty={self.__y}, \n\tvariables={self.__variables}\n)"
+        else :
+            return f"tsFrame(\n\tdata{self.__data.shape}, \n\tdt={self.__dt}, \n\ty={self.__y}\n)"
+    def train_test_split(self, test_size:float|int|None = None, 
+                         train_size:float|int|None = None) -> tuple[Self, Self] :
+        trainp,testp = train_test_split(self.__data, test_size, train_size)
+        trainp = tsFrame(trainp, self.__dt, self.__y, self.__variables)
+        testp = tsFrame(testp, self.__dt, self.__y, self.__variables)
+        return trainp, testp
+        

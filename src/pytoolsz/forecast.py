@@ -35,12 +35,23 @@ from prophet.plot import add_changepoints_to_plot
 from statsmodels.tsa.stattools import adfuller,arma_order_select_ic
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 
+from pytoolsz.tsTools import tsFrame
+from pytoolsz.frame import szDataFrame
+
 import pmdarima as pm
 from pmdarima import model_selection
 
 import pandas as pd
+import polars as pl
 import numpy as np
+from typing import Iterable
 
+__all__ = ["is_DataFrame", "auto_orders", "simforecast"]
+
+def is_DataFrame(obj) -> bool :
+    """判断是否为 DataFrame 类型"""
+    return isinstance(obj,
+                      (pl.DataFrame, pd.DataFrame, tsFrame, szDataFrame))
 
 def auto_orders(data:pd.Series, diff_max:int = 40, 
                 use_log:bool = False) -> tuple:
@@ -93,46 +104,139 @@ class simforecast(object):
     """
     sim(ple) forecast
     """
-    MODES = ["arima","prophet"]
-    def __init__(self, mode:str = "prophet", 
-                 orders:tuple|bool = False, use_log:bool = False, 
+    __all__ = ["MODES","fit","predict","plot"]
+    MODES = ["prophet", "arima"]
+    PROPHETKWGS = ["growth","changepoints","n_changepoints","changepoint_range",
+                   "yearly_seasonality","weekly_seasonality","daily_seasonality",
+                   "holidays","seasonality_mode",
+                   "seasonality_prior_scale","holidays_prior_scale","changepoint_prior_scale",
+                   "mcmc_samples","interval_width","uncertainty_samples",
+                   "stan_backend","scaling","holidays_mode"]
+    ARIMAKWGS = ["start_p","d","start_q","max_p","max_d","max_q","start_P","D","start_Q",
+                 "max_P","max_D","max_Q","max_order","m","seasonal","stationary",
+                 "information_criterion","alpha","test","seasonal_test","stepwise","n_jobs",
+                 "start_params","trend","method","maxiter","offset_test_args",
+                 "seasonal_test_args","suppress_warnings","error_action","trace","random",
+                 "random_state","n_fits","return_valid_fits","out_of_sample_size","scoring",
+                 "scoring_args","with_intercept","sarimax_kwargs","start_params","transformed",
+                 "includes_fixed","method","method_kwargs","gls","gls_kwargs","cov_type","cov_kwds",
+                 "return_params","low_memory"]
+    def __init__(self, data:tsFrame|pl.DataFrame|pd.DataFrame,
+                 ds:str|None = None, y:str|None = None,
+                 variables:str|Iterable[str]|None = None, 
+                 mode:str|None = "prophet",
+                 predict_function:callable|None = None,
                  **kwgs) -> None:
         """
         预测集合 - 
-            目前支持的模型有：ARIMA，prophet。
+            目前支持的模型有：ARIMA，SARIMAX，prophet。
         参数 : 
         mode - 选择预测模型
-        diff - 用于差分选择，如果为True，则进行自动选择差分，默认为False；
-               指定为一个整数值，则按此进行指定的差分阶数进行计算。
         """
-        if mode not in simforecast.MODES:
-            raise ValueError("mode must be one of {}".format(simforecast.MODES))
+        match mode:
+            case "prophet" :
+                self.__mFunc = Prophet
+            case "arima" :
+                self.__mFunc = pm.arima.AutoARIMA
+            case None :
+                if predict_function is not None :
+                    self.__mFunc = predict_function
+                else :
+                    raise ValueError("mode or predict_function is required.")
+            case _ :
+                raise ValueError("mode `{}` is not supported.".foermat(mode))
         self.__mode = mode
-        if isinstance(orders,bool):
-            if orders :
-                self.__diff_order = -1
-            else:
-                self.__diff_order = 0
-        else:
-            self.__diff_order = orders
         self.__kwargs = kwgs
-        if mode == "prophet":
-            self.__mFunc = Prophet
-        elif mode == "arima" :
-            self.__mFunc = SARIMAX
-        elif mode == "patchtst" :
-            self.__mFunc = None
-        else:
-            self.__mFunc = None
         self.__model = None
         self.__fitted = False
         self.__future = None
-        self.__oridata = None
+        self.__oridata = data if isinstance(data, tsFrame) else tsFrame(data,ds,y,variables)
         self.__overdata = None
-    def fit(self,data):
-        pass
-    def predict(self,data):
-        pass
+    def set_prophet_configs(self, key:str, value = None) -> None :
+        """
+        prophet 模型变量设定
+            key等于help时，打印出prophet的帮助文档；
+            否则，按照prophet文档进行设定。
+        """
+        if self.__mode != "prophet" :
+            raise ValueError("mode is not prophet.")
+        if key.lower() == "help" :
+            print(Prophet.__dict__["__doc__"])
+        elif key in simforecast.PROPHETKWGS :
+            self.__kwargs[key] = value
+        else :
+            raise ValueError("key `{}` is not supported.".format(key))
+    def set_autoarima_configs(self, key:str, value = None) -> None :
+        if self.__mode != "arima" :
+            raise ValueError("mode is not arima.")
+        if key.lower() == "help" :
+            print(pm.arima.AutoARIMA.__dict__['__doc__'])
+        elif key in simforecast.ARIMAKWGS :
+            self.__kwargs[key] = value
+        else :
+            raise ValueError("key `{}` is not supported.".format(key))
+    def setConfigs(self, **kwgs):
+        if self.__mode == "prophet" :
+            for k,v in kwgs.items() :
+                self.set_prophet_configs(k,v)
+        elif self.__mode == "arima" :
+            for k,v in kwgs.items() :
+                self.set_autoarima_configs(k,v)
+        else :
+            self.__kwargs.update(kwgs)
+    def help(self) :
+        if self.__mode == "prophet" :
+            self.set_prophet_configs("help")
+        if self.__mode == "arima" :
+            self.set_autoarima_configs("help")
+        if self.__mode is None :
+            print("No Help for ")
+    def fit(self, cap:str|Iterable|float|None = None,
+            floor:str|Iterable|float|None = None, **kwgs):
+        match self.__mode:
+            case "prophet" :
+                mod_kwgs = {k:v for k,v in self.__kwargs.items() if k != "stan_kwgs"}
+                fit_kwgs = self.__kwargs["stan_kwgs"]
+            case "arima" :
+                mod_kwgs = {k:v for k,v in self.__kwargs.items() if k not in [
+                    "sarimax_kwargs","start_params","transformed","includes_fixed",
+                    "method","method_kwargs","gls","gls_kwargs","cov_type","cov_kwds",
+                    "return_params","low_memory"]}
+                fit_kwgs = {k:v for k,v in self.__kwargs.items() if k in [
+                    "sarimax_kwargs","start_params","transformed","includes_fixed",
+                    "method","method_kwargs","gls","gls_kwargs","cov_type","cov_kwds",
+                    "return_params","low_memory"]}
+            case None :
+                mod_kwgs = self.__kwargs
+                fit_kwgs = kwgs
+        self.__model = self.__mFunc(**mod_kwgs)
+        if self.__mode == "prophet" :
+            self.__overdata = self.__oridata.for_prophet(cap, floor)
+            uX = None
+        elif self.__mode == "arima" :
+            self.__overdata, uX = self.__oridata.for_auto_arima(need_x=True)
+        else :
+            self.__overdata, uX = (self.__oridata.to_pandas(), None)
+        if uX is None :
+            self.__model.fit(self.__overdata, **fit_kwgs)
+        else:
+            self.__model.fit(self.__overdata, X=uX, **fit_kwgs)
+    def predict(self, n_periods:int = 10,
+                freq:str = 'D',
+                include_history:bool = False,
+                return_conf_int:bool = False,
+                alpha:float = 0.05) :
+        if self.__mode == "prophet" :
+            future = self.__model.make_future_dataframe(periods=n_periods, 
+                                                        freq=freq, 
+                                                        include_history=include_history)
+            pred = self.__model.predict(future)
+            return pred
+        elif self.__mode == "arima" :
+            pred = self.__model.predict(n_periods, return_conf_int=return_conf_int, alpha=alpha)
+            pass
+        else :
+            pass
     def plot(self, change_points:bool = False):
         pass
 
