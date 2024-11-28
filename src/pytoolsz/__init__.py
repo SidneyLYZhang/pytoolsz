@@ -29,6 +29,7 @@ import pytoolsz.ppTrans as ppTrans
 import pytoolsz.utils as utils
 import pytoolsz.graph as graph
 import pytoolsz.tsTools as tsTools
+import pytoolsz.forecast as forecast
 from pytoolsz.saveExcel import (
     saveExcel,
     transColname2Letter
@@ -38,7 +39,7 @@ from pytoolsz.saveExcel import (
 def version(println:bool = True, 
             output:bool = False) -> str|None:
     version_txt = [
-        "0.2.10",
+        "0.3.0 (2024-11-28)",
         "Copyright (c) 2024 Sidney Zhang <zly@lyzhang.me>",
         "PyToolsz is licensed under Mulan PSL v2."
     ]
@@ -51,6 +52,7 @@ __all__ = [
     "pretools",
     "handlepath",
     "compress",
+    "forecast",
     "datasetsz",
     "getreader",
     "just_load",
