@@ -222,17 +222,20 @@ class simforecast(object):
         else:
             self.__model.fit(self.__overdata, X=uX, **fit_kwgs)
     def predict(self, n_periods:int = 10,
-                freq:str = 'D',
+                freq:str|None = None,
                 include_history:bool = False,
                 return_conf_int:bool = False,
                 alpha:float = 0.05) :
         if self.__mode == "prophet" :
-            future = self.__model.make_future_dataframe(periods=n_periods, 
-                                                        freq=freq, 
-                                                        include_history=include_history)
-            pred = self.__model.predict(future)
-            return pred
+            future = self.__oridata.make_future_dataframe(n_periods=n_periods,
+                                                          frequency=freq,
+                                                          include_history=include_history)
+            self.__future = self.__model.predict(future)
+            return self.__future
         elif self.__mode == "arima" :
+            future = self.__oridata.make_future_dataframe(n_periods=n_periods,
+                                                          frequency=freq,
+                                                          include_history=include_history)
             pred = self.__model.predict(n_periods, return_conf_int=return_conf_int, alpha=alpha)
             pass
         else :

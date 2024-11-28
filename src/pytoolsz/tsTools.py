@@ -21,6 +21,7 @@
 
 import pandas as pd
 import polars as pl
+import numpy as np
 
 import matplotlib.pyplot as plt
 
@@ -82,12 +83,37 @@ class tsFrame(object):
         if cap is None and floor is not None :
             raise ValueError("floor must be None when cap is not None")
         return res
-    def for_auto_arima(self, need_x:bool = False) -> pd.DataFrame|tuple[pd.DataFrame] :
-        res = self.__data.select([self.__dt, self.__y]).to_pandas()
-        if need_x :
-            return res[self.__y],res[self.__dt]
+    def for_auto_arima(self) -> np.ndarray|tuple[np.ndarray] :
+        if self.__variables :
+            Xres = self.__data.select(pl.col(self.__variables)).to_numpy()
+            return self.__data[self.__y].to_numpy(), Xres
         else:
-            return res[self.__y]
+            return self.__data[self.__y].to_numpy(), None
+    def getFreq(self) -> str :
+        res = pd.infer_freq(self.__data[self.__dt].to_pandas())
+        return res
+    def make_future_dataframe(self, n_periods:int = 10, 
+                              include_history:bool = False,
+                              frequency:str|None = None,
+                              keep_name:str|bool = False) -> pd.DataFrame :
+        if frequency is None:
+            freq = self.getFreq()
+        else :
+            freq = frequency
+        last_date = self.__data[self.__dt].max()
+        dates = pd.date_range(
+            start=last_date,
+            periods=n_periods + 1,
+            freq=freq)
+        dates = dates[dates > last_date]
+        dates = dates[:n_periods]
+        if include_history:
+            dates = np.concatenate((np.array(self.__data[self.__dt].to_list()), dates))
+        if keep_name :
+            xname = self.__dt if isinstance(keep_name, bool) else keep_name
+        else :
+            xname = "ds"
+        return pd.DataFrame({xname: dates})
     def plot(self, to_show:bool = True) -> None :
         self.__data.plot(x=self.__dt, y=self.__y)
         if to_show :
