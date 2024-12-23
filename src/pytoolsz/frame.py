@@ -26,13 +26,27 @@ from rich import print
 
 from pmdarima.model_selection import train_test_split
 
-__all__ = ["getreader","just_load","szDataFrame","zipreader"]
+__all__ = ["getreader","read_tsv","just_load","szDataFrame","zipreader"]
+
+def read_tsv(filepath:Path, **kwgs) -> pl.DataFrame:
+    with open(filepath, 'r', encoding="utf-8") as file:
+        first_line = file.readline()
+    lenCols = len(first_line.split("\t"))
+    akwgs = {
+        "separator":"\t",
+        "quote_char":None,
+        "schema_overrides":[pl.Utf8]*lenCols,
+    }
+    akwgs.update(kwgs)
+    return pl.read_csv(filepath, **akwgs)
 
 def getreader(dirfile:Path|str, used_by:str|None = None):
     if used_by is None :
         fna = Path(dirfile).suffix
         if fna in [".xls",".xlsx"]:
             return pl.read_excel
+        elif fna == ".tsv":
+            return read_tsv
         else:
             return getattr(pl, "read_{}".format(fna), pl.read_csv)
     else:
