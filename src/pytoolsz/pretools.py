@@ -208,6 +208,25 @@ def get_interval_dates(start:str|pdl.DateTime,
                      listDates[i].add(**{tupRange[0]:(tupRange[1]-1)})) 
                      for i in range(len(listDates))]
 
+def get_keydate(year:int|None = None, 
+                month:int|None = None, 
+                day:int|None = None,
+                hour:int|None = None,
+                minute:int|None = None,
+                second:int|None = None
+                ) -> pdl.DateTime :
+    """获取指定日期；默认值为当前时间"""
+    xDate = pdl.now()
+    tY = xDate.year if year is None else year
+    tM = xDate.month if month is None else month
+    tD = xDate.day if day is None else day
+    tH = xDate.hour if hour is None else hour
+    tmi = xDate.minute if minute is None else minute
+    ts = xDate.second if second is None else second
+    res = pdl.DateTime(year=tY, month=tM, day=tD,
+                       hour=tH, minute=tmi, second=ts)
+    return res
+
 def last_date(keydate:str|pdl.DateTime|None = None,
               last_:str = "month",
               tz:str|None = None) -> tuple[pdl.DateTime] :
