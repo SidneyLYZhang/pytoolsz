@@ -32,7 +32,7 @@ import re
 
 
 __all__ = ["covert_macadress","convert_suffix","around_right","round",
-           "local_name","convert_country_code",
+           "local_name","convert_country_code","get_keydate",
            "quick_date","near_date","last_date","get_interval_dates"]
 
 def covert_macadress(macadress:str, upper:bool = True) -> str:
