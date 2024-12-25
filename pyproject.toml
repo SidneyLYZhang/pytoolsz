@@ -1,6 +1,6 @@
 [project]
 name = "pytoolsz"
-version = "0.3.0"
+version = "0.3.1"
 description = "A set of Python Tools, mainly used to deal with work problems."
 authors = [
     {name = "Sidney Zhang", email = "zly@lyzhang.me"},
@@ -34,7 +34,7 @@ readme = "README.md"
 license = {text = "MulanPSL-2.0"}
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.26.3", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [tool.rye]
