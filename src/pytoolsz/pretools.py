@@ -33,7 +33,8 @@ import re
 
 __all__ = ["covert_macadress","convert_suffix","around_right","round",
            "local_name","convert_country_code","get_keydate",
-           "quick_date","near_date","last_date","get_interval_dates"]
+           "quick_date","near_date","last_date","get_interval_dates",
+           "getExcelSheets"]
 
 def covert_macadress(macadress:str, upper:bool = True) -> str:
     """
@@ -272,3 +273,10 @@ def near_date(keydate:str|pdl.DateTime|None = None,
     else:
         res = (pinDate.start_of(near_),pinDate.end_of(near_))
     return res
+
+def getExcelSheets(path:Path) -> list :
+    if path.suffix in ["xls","xlsx"] :
+        res = pd.ExcelFile(path).sheet_names
+        return res
+    else:
+        raise ValueError("only support excel file(.xls/.xlsx)...")
