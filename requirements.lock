@@ -47,8 +47,6 @@ frykit==0.6.7
     # via pytoolsz
 fsspec==2024.6.1
     # via torch
-fuzzywuzzy==0.18.0
-    # via pytoolsz
 holidays==0.55
     # via prophet
 importlib-resources==6.4.3
@@ -64,8 +62,6 @@ joblib==1.4.2
     # via scikit-learn
 kiwisolver==1.4.5
     # via matplotlib
-levenshtein==0.26.0
-    # via python-levenshtein
 markdown-it-py==3.0.0
     # via rich
 markupsafe==2.1.5
@@ -172,8 +168,6 @@ python-dateutil==2.9.0.post0
     # via pandas
     # via pendulum
     # via time-machine
-python-levenshtein==0.26.0
-    # via fuzzywuzzy
 pytz==2024.1
     # via pandas
 pywin32==306
@@ -181,7 +175,7 @@ pywin32==306
 pyzstd==0.16.1
     # via py7zr
 rapidfuzz==3.10.0
-    # via levenshtein
+    # via thefuzz
 rich==13.7.1
     # via pytoolsz
 scikit-learn==1.5.2
@@ -210,6 +204,8 @@ tbb==2021.13.1
     # via mkl
 texttable==1.7.0
     # via py7zr
+thefuzz==0.22.1
+    # via pytoolsz
 threadpoolctl==3.5.0
     # via scikit-learn
 time-machine==2.15.0

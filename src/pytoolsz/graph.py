@@ -34,7 +34,7 @@ import frykit.plot as fplt
 import frykit.shp as fshp
 from typing import Self
 from pathlib import Path
-from fuzzywuzzy import process
+from thefuzz import process
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patheffects import Normal, Stroke

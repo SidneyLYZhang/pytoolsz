@@ -20,6 +20,7 @@ from pathlib import Path
 from numbers import Number
 from decimal import Decimal,ROUND_HALF_UP
 from collections.abc import Iterable
+from thefuzz import process
 
 import pendulum as pdl
 import pycountry as pct
@@ -275,8 +276,27 @@ def near_date(keydate:str|pdl.DateTime|None = None,
     return res
 
 def getExcelSheets(path:Path) -> list :
-    if path.suffix in ["xls","xlsx"] :
+    if path.suffix in [".xls",".xlsx"] :
         res = pd.ExcelFile(path).sheet_names
         return res
     else:
         raise ValueError("only support excel file(.xls/.xlsx)...")
+
+def impedanceList(oriList:list, tarList:list,
+                  preset:dict|None = None) -> list :
+    res = []
+    for xi in oriList :
+        if xi in tarList :
+            res.append(xi)
+        else :
+            if preset :
+                if xi in preset.keys() :
+                    res.append(preset[xi])
+                elif xi in preset.values() :
+                    res.append({v:k for k,v in preset.items()}[xi])
+                else :
+                    res.append(process.extract(xi, tarList, limit=1)[0][0])
+            else :
+                res.append(process.extract(xi, tarList, limit=1)[0][0])
+    return res
+
