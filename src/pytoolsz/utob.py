@@ -249,13 +249,15 @@ def read_multiChannel(tarName:str, between_date:list[str], channelNames:list[str
                       compare:bool = False, 
                       group_by:str|Mapping[str,IntoExpr|Iterable[IntoExpr]|Mapping[str,IntoExpr]]|None = None,
                       convert:str = "polars",
-                      schema_overrides: Mapping[str, PolarsDataType] | Sequence[PolarsDataType] | None = None
+                      schema_overrides: Mapping[str, PolarsDataType] | Sequence[PolarsDataType] | None = None,
+                      transType:pl.Expr|list[pl.Expr]|None = None
                     ) -> pl.DataFrame|pd.DataFrame:
 
     data = []
     for chs in channelNames :
         data.append(read_YouTube_zipdata(tarName, between_date, chs,  
-                                         dataName, rootpath, lastnum, compare))
+                                         dataName, rootpath, lastnum, compare, 
+                                         transType=transType))
     data = [x.get() for x in data]
     if schema_overrides is not None :
         tmpData = []
