@@ -1,6 +1,6 @@
 [project]
 name = "pytoolsz"
-version = "0.3.3"
+version = "0.3.4"
 description = "A set of Python Tools, mainly used to deal with work problems."
 authors = [
     {name = "Sidney Zhang", email = "zly@lyzhang.me"},

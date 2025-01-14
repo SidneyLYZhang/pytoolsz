@@ -16,7 +16,7 @@
 # See the Mulan PSL v2 for more details.
 
 from pathlib import Path
-from pytoolsz.frame import szDataFrame,zipreader
+from pytoolsz.frame import szDataFrame,zipreader,optExpr
 from pytoolsz.pretools import (
     quick_date,
     get_interval_dates, 
@@ -219,7 +219,8 @@ def youtube_datetime(keydate:str, seq:str|None = None, daily:bool = False,
 def read_YouTube_zipdata(tarName:str, between_date:list[str], channelName:str,
                            dataName:str, rootpath:Path|None = None, 
                            lastnum:bool|int = False,
-                           compare:bool = False) -> szDataFrame:
+                           compare:bool = False, 
+                           transType:pl.Expr|list[pl.Expr]|None = None) -> szDataFrame:
     """
     读取下载的YouTube数据。
     通常YouTube数据下载后会被压缩到zip文件中，并包含多个数据csv文件。
@@ -236,6 +237,10 @@ def read_YouTube_zipdata(tarName:str, between_date:list[str], channelName:str,
     csvlike = "{}{}.csv".format(dataName,COMPARENAME if compare else "")
     homepath = Path(rootpath) if rootpath else Path(".").absolute()
     data = zipreader(homepath/filelike, csvlike)
+    if transType is not None :
+        optrans = optExpr(transType, data)
+        if optrans :
+            data = zipreader(homepath/filelike, csvlike, transtype = optrans)
     return data
 
 def read_multiChannel(tarName:str, between_date:list[str], channelNames:list[str],

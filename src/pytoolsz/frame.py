@@ -26,7 +26,8 @@ from rich import print
 
 from pmdarima.model_selection import train_test_split
 
-__all__ = ["getreader","read_tsv","just_load","szDataFrame","zipreader"]
+__all__ = ["getreader","read_tsv","checkExpr","dataframeColumns",
+           "just_load","szDataFrame","zipreader"]
 
 def read_tsv(filepath:Path, **kwgs) -> pl.DataFrame:
     with open(filepath, 'r', encoding="utf-8") as file:
@@ -52,7 +53,57 @@ def getreader(dirfile:Path|str, used_by:str|None = None):
     else:
         return getattr(pl, "read_{}".format(used_by))
 
+def dataframeColumns(data:str|Path|pl.DataFrame|pd.DataFrame) -> list[str] :
+    if isinstance(data, (str, Path)) :
+        tcols = getreader(data)(data).columns
+    else :
+        tcols = data.columns
+    return tcols
+
+def checkExpr(ziel:pl.Expr|list[pl.Expr], 
+              indata:str|Path|pl.DataFrame|pd.DataFrame,
+              by_:str = "all") -> bool :
+    tcols = dataframeColumns(indata)
+    res = []
+    if isinstance(ziel, list) :
+        for xExpr in ziel :
+            tmp = []
+            for i in xExpr.meta.root_names() :
+                tmp.append(i in tcols)
+            res.append(all(tmp))
+        if by_ == "all" :
+            res = all(res)
+        elif by_ == "any" :
+            res = any(res)
+        else :
+            raise ValueError("by_ only support `any` and `all` !")
+    else :
+        for i in ziel.meta.root_names() :
+            res.append(i in tcols)
+        res = all(res)
+    return res
+
+def optExpr(ziel:pl.Expr|list[pl.Expr], 
+            indata:str|Path|pl.DataFrame|pd.DataFrame
+            ) -> pl.Expr|list[pl.Expr]|None :
+    if checkExpr(ziel, indata, by_="any") :
+        tcols = dataframeColumns(indata)
+        res = []
+        if isinstance(ziel, list) :
+            for xExpr in ziel :
+                tmp = []
+                for i in xExpr.meta.root_names() :
+                    tmp.append(i in tcols)
+                if all(tmp) :
+                    res.append(xExpr)
+        else :
+            res = ziel
+        return res
+    else :
+        return None
+
 def just_load(filepath:str|Path, engine:str = "polars", 
+              transtype:pl.Expr|list[pl.Expr]|None = None,
               used_by:str|None = None, **kwgs) -> pl.DataFrame|pd.DataFrame:
     """load file to DataFrame"""
     if filepath != Path("No Path") :
@@ -63,7 +114,17 @@ def just_load(filepath:str|Path, engine:str = "polars",
     if engine not in ["polars","pandas"]:
         raise ValueError("engine must be one of {}".format(["polars","pandas"]))
     else:
-        return res.to_pandas() if engine == "pandas" else res
+        if transtype is None :
+            return res.to_pandas() if engine == "pandas" else res
+        else :
+            if checkExpr(transtype, filepath) :
+                if isinstance(transtype, list) :
+                    res = res.with_columns(*transtype)
+                else :
+                    res = res.with_columns(transtype)
+                return res.to_pandas() if engine == "pandas" else res
+            else :
+                raise ValueError("Column Not Found Error !")
 
 class szDataFrame(object):
     """
@@ -126,14 +187,15 @@ class szDataFrame(object):
                szDataFrame(filepath=self.__filepath, from_data=test)
 
 
-def zipreader(zipFilepath:Path|str, subFile:str, **kwgs) -> szDataFrame:
+def zipreader(zipFilepath:Path|str, subFile:str, 
+              transtype:pl.Expr|list[pl.Expr]|None = None, **kwgs) -> szDataFrame:
     with TemporaryDirectory() as tmpdirname:
         with ZipFile(Path(zipFilepath), "r") as teZip:
             teZip.extractall(path = tmpdirname)
             subFiles = teZip.namelist()
         if subFile not in subFiles:
             raise ValueError("'{}' not in zip-file({})!".format(subFile,zipFilepath))
-        return szDataFrame(Path(tmpdirname)/subFile, **kwgs)
+        return szDataFrame(Path(tmpdirname)/subFile, transtype = transtype, **kwgs)
 
 if __name__ == "__main__":
     rootpath = Path(__file__).absolute().parent.parent

@@ -39,7 +39,7 @@ from pytoolsz.saveExcel import (
 def version(println:bool = True, 
             output:bool = False) -> str|None:
     version_txt = [
-        "0.3.3 (2025-01-07)",
+        "0.3.4 (2025-01-14)",
         "Copyright (c) 2024 Sidney Zhang <zly@lyzhang.me>",
         "PyToolsz is licensed under Mulan PSL v2."
     ]
