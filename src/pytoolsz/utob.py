@@ -239,7 +239,7 @@ def read_YouTube_zipdata(tarName:str, between_date:list[str], channelName:str,
     data = zipreader(homepath/filelike, csvlike)
     if transType is not None :
         optrans = optExpr(transType, data)
-        if optrans :
+        if optrans is not None:
             data = zipreader(homepath/filelike, csvlike, transtype = optrans)
     return data
 
