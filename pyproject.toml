@@ -1,6 +1,6 @@
 [project]
 name = "pytoolsz"
-version = "0.3.7"
+version = "0.3.8"
 description = "A set of Python Tools, mainly used to deal with work problems."
 authors = [
     {name = "Sidney Zhang", email = "zly@lyzhang.me"},
@@ -28,6 +28,7 @@ dependencies = [
     "pdfplumber>=0.11.4",
     "pmdarima>=2.0.4",
     "thefuzz>=0.22.1",
+    "opencv-python>=4.11.0.86",
 ]
 requires-python = ">= 3.8"
 readme = "README.md"

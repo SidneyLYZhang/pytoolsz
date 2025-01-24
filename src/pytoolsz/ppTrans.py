@@ -17,12 +17,17 @@
 
 from typing import Self
 from pathlib import Path
+import cv2
 from PIL import Image
 from tempfile import TemporaryDirectory
 import win32com.client as wcc
+import shutil
+import numpy as np
+from pytoolsz.handlepath import lastFile
 import sys
+import subprocess
 
-__all__ = ["convertPPT", "PPT_longPic"]
+__all__ = ["convertPPT", "PPT_longPic", "imageOptimization"]
 
 class convertPPT(object):
     """
@@ -85,7 +90,7 @@ class convertPPT(object):
             print("File converted successfully.")
 
 
-def PPT_longPic(pptFile:str|Path, saveName:str|None = None, width:int|str|None = 700, 
+def PPT_longPic(pptFile:str|Path, saveName:str|None = None, width:int|str|None = None, 
                 saveto:str|Path = ".") -> None :
     """
     width : 画幅宽度，可以直接指定宽度像素，也可以使用字符串数据输入百分比。
@@ -127,6 +132,51 @@ def PPT_longPic(pptFile:str|Path, saveName:str|None = None, width:int|str|None =
         else:
             canvas.save(filepath.joinpath(Path(pptFile).stem), format=sType)
 
+def imageOptimization(imageFile:str|Path|Image.Image, saveFile:str|Path|None = None, 
+             max_width:int = None, max_height:int = None, 
+             engine:str|None = "pngquant",
+             engine_conf:str|None = None) -> Image.Image|None :
+    """图片优化、无损压缩"""
+    if isinstance(imageFile, (str, Path)):
+        imageFile = Image.open(imageFile)
+    img = cv2.cvtColor(np.array(imageFile), cv2.COLOR_RGB2BGR)
+    if max_width or max_height :
+        height, width, _ = img.shape
+        oShape = (width, height)
+        if max_width :
+            if width > max_width :
+                height = int(height * max_width / width)
+                width = max_width
+            if max_width < 1 :
+                width = int(width * max_width)
+                height = int(height * max_width)
+        if max_height :
+            if height > max_height :
+                width = int(width * max_height / height)
+                height = max_height
+            if max_height < 1 :
+                if width < oShape[0] :
+                    if height / oShape[1] > max_height :
+                        height = int(oShape[1] * max_height)
+                        width = int(oShape[0] * max_height)
+                else:
+                    height = int(height * max_height)
+                    width = int(width * max_height)
+        img = cv2.resize(img, (width, height))
+    res = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    with TemporaryDirectory(prefix="pytoolsz") as tmpFolder :
+        res.save(Path(tmpFolder)/"tmp.png", compress_level=2, quality=100)
+        if engine :
+            try:
+                subprocess.run([engine, engine_conf, Path(tmpFolder)/"tmp.png"], shell=True, check=True)
+            except Exception as e:
+                print("未安装pngquant，不能进行图片优化压缩。\n可使用`scoop install pngquant`进行安装。")
+                raise e
+        if saveFile is None :
+            res = Image.open(lastFile(Path(tmpFolder), "*.*"))
+            return res
+        else :
+            shutil.copyfile(lastFile(Path(tmpFolder), "*.*"), saveFile)
 
 if __name__ == "__main__":
     pptfile = "./test.pptx"
