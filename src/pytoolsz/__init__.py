@@ -29,7 +29,7 @@ import pytoolsz.ppTrans as ppTrans
 import pytoolsz.utils as utils
 import pytoolsz.graph as graph
 import pytoolsz.tsTools as tsTools
-# import pytoolsz.forecast as forecast
+import pytoolsz.forecast as forecast
 from pytoolsz.saveExcel import (
     saveExcel,
     transColname2Letter
@@ -53,7 +53,7 @@ __all__ = [
     "pretools",
     "handlepath",
     "compress",
-    # "forecast",
+    "forecast",
     "datasetsz",
     "getreader",
     "just_load",
