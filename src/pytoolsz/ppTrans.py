@@ -136,7 +136,10 @@ def imageOptimization(imageFile:str|Path|Image.Image, saveFile:str|Path|None = N
              max_width:int = None, max_height:int = None, 
              engine:str|None = "pngquant",
              engine_conf:str|None = None) -> Image.Image|None :
-    """图片优化、无损压缩"""
+    """图片优化、无损压缩
+    默认建议使用pngquant进行无损压缩，也可以设置为其他图片无损压缩引擎，
+    不需要针对性压缩，可设定engine为None。
+    """
     if isinstance(imageFile, (str, Path)):
         imageFile = Image.open(imageFile)
     img = cv2.cvtColor(np.array(imageFile), cv2.COLOR_RGB2BGR)
@@ -172,6 +175,8 @@ def imageOptimization(imageFile:str|Path|Image.Image, saveFile:str|Path|None = N
             except Exception as e:
                 print("未安装pngquant，不能进行图片优化压缩。\n可使用`scoop install pngquant`进行安装。")
                 raise e
+        else:
+            res.save(Path(tmpFolder)/"tmp.png", compress_level=7, quality=95)
         if saveFile is None :
             res = Image.open(lastFile(Path(tmpFolder), "*.*"))
             return res

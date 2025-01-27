@@ -29,7 +29,7 @@
 # 2. prophet ：传统时序模型的集大成者，减少前序处理程度，并提供了更多添加属性，使时序预测更准确。
 
 from itertools import product
-from pathlib import Path
+from typing import Union
 from prophet import Prophet
 from prophet.plot import add_changepoints_to_plot
 from statsmodels.tsa.stattools import adfuller,arma_order_select_ic
@@ -39,14 +39,12 @@ from pytoolsz.tsTools import tsFrame
 from pytoolsz.frame import szDataFrame
 
 import pmdarima as pm
-from pmdarima import model_selection
 
 import pandas as pd
 import polars as pl
 import numpy as np
-from typing import Iterable
 
-__all__ = ["is_DataFrame", "auto_orders", "simforecast"]
+__all__ = ["is_DataFrame", "auto_orders", "help_kwargs", "quickProphet", "quickARIMA"]
 
 def is_DataFrame(obj) -> bool :
     """判断是否为 DataFrame 类型"""
@@ -55,7 +53,11 @@ def is_DataFrame(obj) -> bool :
 
 def auto_orders(data:pd.Series, diff_max:int = 40, 
                 use_log:bool = False) -> tuple:
-    """自动选择合适时序特征"""
+    """
+    自动选择合适时序特征
+    目前并不推荐auto_orders方法，因为其计算量过大，且存在所搜范围可能不足的问题。
+    除非特殊情况，请选择quickOrders方法来确定arima的模型参数。
+    """
     tdt = np.log(data) if use_log else data
     tmax = len(tdt) if diff_max > len(tdt) else diff_max
     for i in range(1,tmax+1):
@@ -100,148 +102,176 @@ def auto_orders(data:pd.Series, diff_max:int = 40,
                 bT = ix[1]
     return ((p,d,q),(bP,bD,bQ,int(s)),bT)
 
-class simforecast(object):
+def quickOrders(data:pl.DataFrame|pd.DataFrame, target:str, 
+                m:int = 1, **kwargs) -> tuple:
     """
-    sim(ple) forecast
+    快速选择ARIMA模型的参数
+    m - 季节性周期：
+        1 - no seasonality（默认）
+        7 - daily
+        12 - monthly
+        52 - weekly
+    kwargs - arima模型的额外参数，可使用 `help_kwargs("AutoARIMA")` 查看所有参数。
+    返回：
+    order - ARIMA模型的参数（p,d,q）
+    seasonal_order - 季节性参数（P,D,Q,s）
     """
-    __all__ = ["MODES","fit","predict","plot"]
-    MODES = ["prophet", "arima"]
-    PROPHETKWGS = ["growth","changepoints","n_changepoints","changepoint_range",
-                   "yearly_seasonality","weekly_seasonality","daily_seasonality",
-                   "holidays","seasonality_mode",
-                   "seasonality_prior_scale","holidays_prior_scale","changepoint_prior_scale",
-                   "mcmc_samples","interval_width","uncertainty_samples",
-                   "stan_backend","scaling","holidays_mode"]
-    ARIMAKWGS = ["start_p","d","start_q","max_p","max_d","max_q","start_P","D","start_Q",
-                 "max_P","max_D","max_Q","max_order","m","seasonal","stationary",
-                 "information_criterion","alpha","test","seasonal_test","stepwise","n_jobs",
-                 "start_params","trend","method","maxiter","offset_test_args",
-                 "seasonal_test_args","suppress_warnings","error_action","trace","random",
-                 "random_state","n_fits","return_valid_fits","out_of_sample_size","scoring",
-                 "scoring_args","with_intercept","sarimax_kwargs","start_params","transformed",
-                 "includes_fixed","method","method_kwargs","gls","gls_kwargs","cov_type","cov_kwds",
-                 "return_params","low_memory"]
-    def __init__(self, data:tsFrame|pl.DataFrame|pd.DataFrame,
-                 ds:str|None = None, y:str|None = None,
-                 variables:str|Iterable[str]|None = None, 
-                 mode:str|None = "prophet",
-                 predict_function:callable|None = None,
-                 **kwgs) -> None:
-        """
-        预测集合 - 
-            目前支持的模型有：ARIMA，SARIMAX，prophet。
-        参数 : 
-        mode - 选择预测模型
-        """
-        match mode:
-            case "prophet" :
-                self.__mFunc = Prophet
-            case "arima" :
-                self.__mFunc = pm.arima.AutoARIMA
-            case None :
-                if predict_function is not None :
-                    self.__mFunc = predict_function
-                else :
-                    raise ValueError("mode or predict_function is required.")
-            case _ :
-                raise ValueError("mode `{}` is not supported.".foermat(mode))
-        self.__mode = mode
-        self.__kwargs = kwgs
-        self.__model = None
-        self.__fitted = False
-        self.__future = None
-        self.__oridata = data if isinstance(data, tsFrame) else tsFrame(data,ds,y,variables)
-        self.__overdata = None
-    def set_prophet_configs(self, key:str, value = None) -> None :
-        """
-        prophet 模型变量设定
-            key等于help时，打印出prophet的帮助文档；
-            否则，按照prophet文档进行设定。
-        """
-        if self.__mode != "prophet" :
-            raise ValueError("mode is not prophet.")
-        if key.lower() == "help" :
-            print(Prophet.__dict__["__doc__"])
-        elif key in simforecast.PROPHETKWGS :
-            self.__kwargs[key] = value
-        else :
-            raise ValueError("key `{}` is not supported.".format(key))
-    def set_autoarima_configs(self, key:str, value = None) -> None :
-        if self.__mode != "arima" :
-            raise ValueError("mode is not arima.")
-        if key.lower() == "help" :
-            print(pm.arima.AutoARIMA.__dict__['__doc__'])
-        elif key in simforecast.ARIMAKWGS :
-            self.__kwargs[key] = value
-        else :
-            raise ValueError("key `{}` is not supported.".format(key))
-    def setConfigs(self, **kwgs):
-        if self.__mode == "prophet" :
-            for k,v in kwgs.items() :
-                self.set_prophet_configs(k,v)
-        elif self.__mode == "arima" :
-            for k,v in kwgs.items() :
-                self.set_autoarima_configs(k,v)
-        else :
-            self.__kwargs.update(kwgs)
-    def help(self) :
-        if self.__mode == "prophet" :
-            self.set_prophet_configs("help")
-        if self.__mode == "arima" :
-            self.set_autoarima_configs("help")
-        if self.__mode is None :
-            print("No Help for ")
-    def fit(self, cap:str|Iterable|float|None = None,
-            floor:str|Iterable|float|None = None, **kwgs):
-        match self.__mode:
-            case "prophet" :
-                mod_kwgs = {k:v for k,v in self.__kwargs.items() if k != "stan_kwgs"}
-                fit_kwgs = self.__kwargs["stan_kwgs"]
-            case "arima" :
-                mod_kwgs = {k:v for k,v in self.__kwargs.items() if k not in [
-                    "sarimax_kwargs","start_params","transformed","includes_fixed",
-                    "method","method_kwargs","gls","gls_kwargs","cov_type","cov_kwds",
-                    "return_params","low_memory"]}
-                fit_kwgs = {k:v for k,v in self.__kwargs.items() if k in [
-                    "sarimax_kwargs","start_params","transformed","includes_fixed",
-                    "method","method_kwargs","gls","gls_kwargs","cov_type","cov_kwds",
-                    "return_params","low_memory"]}
-            case None :
-                mod_kwgs = self.__kwargs
-                fit_kwgs = kwgs
-        self.__model = self.__mFunc(**mod_kwgs)
-        if self.__mode == "prophet" :
-            self.__overdata = self.__oridata.for_prophet(cap, floor)
-            uX = None
-        elif self.__mode == "arima" :
-            self.__overdata, uX = self.__oridata.for_auto_arima(need_x=True)
-        else :
-            self.__overdata, uX = (self.__oridata.to_pandas(), None)
-        if uX is None :
-            self.__model.fit(self.__overdata, **fit_kwgs)
-        else:
-            self.__model.fit(self.__overdata, X=uX, **fit_kwgs)
-    def predict(self, n_periods:int = 10,
-                freq:str|None = None,
-                include_history:bool = False,
-                return_conf_int:bool = False,
-                alpha:float = 0.05) :
-        if self.__mode == "prophet" :
-            future = self.__oridata.make_future_dataframe(n_periods=n_periods,
-                                                          frequency=freq,
-                                                          include_history=include_history)
-            self.__future = self.__model.predict(future)
-            return self.__future
-        elif self.__mode == "arima" :
-            future = self.__oridata.make_future_dataframe(n_periods=n_periods,
-                                                          frequency=freq,
-                                                          include_history=include_history)
-            pred = self.__model.predict(n_periods, return_conf_int=return_conf_int, alpha=alpha)
-            pass
-        else :
-            pass
-    def plot(self, change_points:bool = False):
-        pass
+    if not is_DataFrame(data):
+        raise ValueError("Input data must be a polars/pandas DataFrame.")
+    if target not in data.columns:
+        raise ValueError(f"Column {target} not found in DataFrame.")
+    if isinstance(data, pl.DataFrame) :
+        tardata = data.to_pandas()[target]
+    else :
+        tardata = data[target]
+    alargs = {
+        "seasonal":True,
+        "m":m,
+        "stepwise":True,
+        "trace":True,
+        "error_action":"ignore",
+        "suppress_warnings":True
+    }.update(kwargs)
+    model = pm.auto_arima(tardata,**alargs)
+    return model.order, model.seasonal_order, model.trend
 
-def load_model(mpath:str|Path, mode:str = "prophet") -> simforecast :
-    pass
+def help_kwargs(funcnama:str, println:bool = True) -> str|None :
+    """参数帮助文档"""
+    match funcnama :
+        case "Prophet" :
+            txt = Prophet.__dict__["__doc__"]
+        case "AutoARIMA" :
+            txt = pm.arima.AutoARIMA.__dict__['__doc__']
+        case "SARIMA" :
+            txt = SARIMAX.__dict__['__doc__']
+        case _ :
+            raise ValueError("funcnama `{}` is not supported.".format(funcnama))
+    if println :
+        print(txt)
+    else :
+        return txt
+
+def quickProphet(data: pl.DataFrame|pd.DataFrame, 
+                 dt: str, y: str, 
+                 exog: list[str]|None = None,
+                 n_periods: int = 10, 
+                 future_exog:pl.DataFrame|pd.DataFrame|None = None, **kwargs) -> szDataFrame:
+    """
+    使用Prophet库进行时间序列预测的快速函数。
+
+    参数:
+        data (pl.DataFrame): 输入的时序数据，包含时间列和目标列。
+        dt (str): 时间列在输入数据框中的列名。
+        y (str): 目标列在输入数据框中的列名。
+        exog (list[str]): 额外的外生变量列名列表。
+        n_periods (int): 需要预测的未来时间周期数量。
+        future_exog (pl.DataFrame): 未来时间点的外生变量数据框。
+        **kwargs: Prophet模型的额外参数。可使用 `help_kwargs("Prophet")` 查看所有参数。
+
+    返回:
+        pl.DataFrame: 包含原始数据和预测结果的Polars DataFrame。
+    """
+    # 参数检查
+    if not is_DataFrame(data):
+        raise ValueError("Input data must be a polars/pandas DataFrame.")
+    if dt not in data.columns or y not in data.columns:
+        raise ValueError(f"Columns {dt} or {y} not found in DataFrame.")
+    if exog is not None :
+        if not set(exog).issubset(data.columns) :
+            raise ValueError("exog columns not found in DataFrame.")
+        if future_exog is None :
+            raise ValueError("futuree_exog must be provided when exog is not None.")
+    # 创建Prophet所需的DataFrame格式
+    if isinstance(data, pl.DataFrame) :
+        df = data.select(pl.col(dt), pl.col(y)).rename({dt: "ds", y: "y"})
+        df = df.to_pandas()
+    else :
+        df = data[[dt, y]].rename({dt: "ds", y: "y"})
+    # 计算时间间隔
+    freq = pd.infer_freq(df["ds"])
+    # 初始化Prophet模型
+    model = Prophet(**kwargs)
+    for col in exog :
+        model.add_regressor(col)
+    model.fit(df)
+    # 生成未来的时间点
+    future = model.make_future_dataframe(periods=n_periods, freq=freq)
+    if exog is not None :
+        for col in exog :
+            future[col] = future_exog[col]
+    # 预测
+    forecast = model.predict(future)
+    # 转换为Polars DataFrame并合并
+    forecast_pl = pl.from_pandas(forecast)
+    result = data.join(forecast_pl.rename({"ds": dt}), on=dt, how="outer")
+    return szDataFrame(filepath=None, from_data=result)
+
+def quickARIMA(data: Union[pl.DataFrame, pd.DataFrame], target: str, 
+               n_periods: int = 10,
+               exog: Union[list[str], None] = None, m: int = 1,
+               future_exog: Union[pl.DataFrame, pd.DataFrame, None] = None,
+               orders: Union[tuple, str] = "auto", **kwargs) -> pl.DataFrame:
+    # 输入校验
+    if not is_DataFrame(data):
+        raise ValueError("Input data must be a polars/pandas DataFrame.")
+    if exog is not None:
+        if not set(exog).issubset(data.columns):
+            raise ValueError("exog columns not found in DataFrame.")
+    # 处理orders参数
+    if isinstance(orders, str):
+        if orders.lower() == "auto":
+            # 假设quickOrders返回(order, seasonal_order, trend)
+            orders = quickOrders(data, target, m=m, **kwargs)
+        else:
+            raise ValueError("orders must be a tuple or 'auto'.")
+    elif not (isinstance(orders, tuple) and len(orders) == 3):
+        raise ValueError("orders must be a tuple((p,d,q),(P,D,Q,s),trend) or 'auto'.")
+    # 统一转换为pandas格式处理
+    if isinstance(data, pl.DataFrame):
+        data_pd = data.to_pandas()
+    else:
+        data_pd = data.copy()
+    # 提取目标变量和外生变量
+    endog = data_pd[target]
+    exog_data = data_pd[exog] if exog is not None else None
+    # 拆分orders参数
+    order, seasonal_order, trend = orders
+    # 创建并拟合模型
+    model = SARIMAX(
+        endog=endog,
+        exog=exog_data,
+        order=order,
+        seasonal_order=seasonal_order,
+        trend=trend,
+        **kwargs
+    )
+    model_fit = model.fit(disp=False)
+    # 预测阶段的外生变量处理
+    future_exog_processed = None
+    if exog is not None:
+        if future_exog is None:
+            raise ValueError("future_exog must be provided when using exog.")
+        if not set(exog).issubset(future_exog.columns):
+            raise ValueError("future_exog must contain all exog columns.")
+        if len(future_exog) != n_periods:
+            raise ValueError(f"future_exog must have exactly {n_periods} rows.")
+        # 转换为pandas格式
+        if isinstance(future_exog, pl.DataFrame):
+            future_exog_pd = future_exog.to_pandas()
+        else:
+            future_exog_pd = future_exog.copy()
+        future_exog_processed = future_exog_pd[exog]
+    # 执行预测并获取置信区间
+    forecast = model_fit.get_forecast(
+        steps=n_periods,
+        exog=future_exog_processed
+    )
+    # 提取预测结果的三要素
+    forecast_mean = forecast.predicted_mean
+    conf_int = forecast.conf_int()  # 获取置信区间DataFrame
+    # 构建返回结果
+    return pl.DataFrame({
+        f"{target}_pred": forecast_mean.values,
+        f"{target}_upper": conf_int.iloc[:, 1].values,
+        f"{target}_lower": conf_int.iloc[:, 0].values
+    })
