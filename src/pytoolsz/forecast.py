@@ -39,6 +39,7 @@ from pytoolsz.tsTools import tsFrame
 from pytoolsz.frame import szDataFrame
 
 import pmdarima as pm
+import importlib
 
 import pandas as pd
 import polars as pl
@@ -144,6 +145,15 @@ def help_kwargs(funcnama:str, println:bool = True) -> str|None :
             txt = pm.arima.AutoARIMA.__dict__['__doc__']
         case "SARIMA" :
             txt = SARIMAX.__dict__['__doc__']
+        case "PatchTST":
+            module = importlib.import_module("gluonts.torch")
+            txt = getattr(module, "PatchTSTEstimator").__dict__['__doc__']
+        case "DeepAR" :
+            module = importlib.import_module("gluonts.torch")
+            txt = getattr(module, "DeepAREstimator").__dict__['__doc__']
+        case "Chronos" :
+            module = importlib.import_module("autogluon.timeseries")
+            txt = getattr(module, "TimeSeriesPredictor").fit.__doc__
         case _ :
             raise ValueError("funcnama `{}` is not supported.".format(funcnama))
     if println :
@@ -275,3 +285,43 @@ def quickARIMA(data: Union[pl.DataFrame, pd.DataFrame], target: str,
         f"{target}_upper": conf_int.iloc[:, 1].values,
         f"{target}_lower": conf_int.iloc[:, 0].values
     })
+
+def quickPreRNN(data:pl.DataFrame|pd.DataFrame, target:str,
+                engine:str = "autogluon", module:str = "bolt_base") -> pl.DataFrame :
+    """
+    使用高阶RNN模型进行时间序列预测的函数。
+    主要支持的模型有：
+    - PatchTST
+    - DeepAR
+    - Chronos
+    """
+    # 定义基本可支持模型。
+    models = {
+        "gluonts": {
+            "PatchTST": "torch.PatchTSTEstimator",
+            "DeepAR": "torch.DeepAREstimator",
+        },
+        "autogluon": "timeseries.TimeSeriesPredictor",
+    }
+    if engine not in models.keys():
+        raise ValueError("Engine `{}` is not supported.".format(engine))
+    else :
+        spec = importlib.util.find_spec(engine)
+        if spec is None :
+            raise ValueError(f"Engine `{engine}` is not installed. Use `pip install {engine}` to install.")
+        else :
+            if engine == "autogluon" :
+                pickName = models[engine].split(".")
+                fixName = ".".jion([engine, pickName[0]])
+            else :
+                if module not in models[engine].keys():
+                    raise ValueError(f"Module `{module}` is not supported in engine `{engine}`.")
+                pickName = models[engine][module].split(".")
+                fixName = ".".jion([engine, pickName[0]])
+            packModule = importlib.import_module(fixName)
+            createModel = getattr(packModule, pickName[1])
+    if not is_DataFrame(data):
+        raise ValueError("Input data must be a polars/pandas DataFrame.")
+    if target not in data.columns:
+        raise ValueError(f"Column {target} not found in DataFrame.")
+    pass
