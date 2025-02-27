@@ -40,7 +40,7 @@ __version__ = "0.3.9"
 def version(println:bool = True, 
             output:bool = False) -> str|None:
     version_txt = [
-        "0.3.9 (2025-01-27)",
+        "0.3.9.1 (2025-02-27)",
         "Copyright (c) 2024 Sidney Zhang <zly@lyzhang.me>",
         "PyToolsz is licensed under Mulan PSL v2."
     ]

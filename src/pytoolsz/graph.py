@@ -778,15 +778,16 @@ class heatmapSZ(object) :
             "xlabelstyle" : {"pad":15, "font":'Source Han Sans SC', "fontsize":18},
             "label_type" : "center",
         }
-        if "plot_kws" in add_plot_kws.keys() :
-            self.__add_plot_kws["plot_kws"].update(add_plot_kws["plot_kws"])
-            self.__add_plot_kws["plot_kws"]["x"] = self.__add_data[add_plot_kws["plot_kws"]["x"]].to_list()
-        if "title" in add_plot_kws.keys() :
-            self.__add_plot_kws["title"] = add_plot_kws["title"]
-        if "xlabelstyle" in add_plot_kws.keys() :
-            self.__add_plot_kws["xlabelstyle"].update(add_plot_kws["xlabelstyle"])
-        if "label_type" in add_plot_kws.keys() :
-            self.__add_plot_kws["label_type"] = add_plot_kws["label_type"]
+        if add_plot_kws is not None :
+            if "plot_kws" in add_plot_kws.keys() :
+                self.__add_plot_kws["plot_kws"].update(add_plot_kws["plot_kws"])
+                self.__add_plot_kws["plot_kws"]["x"] = self.__add_data[add_plot_kws["plot_kws"]["x"]].to_list()
+            if "title" in add_plot_kws.keys() :
+                self.__add_plot_kws["title"] = add_plot_kws["title"]
+            if "xlabelstyle" in add_plot_kws.keys() :
+                self.__add_plot_kws["xlabelstyle"].update(add_plot_kws["xlabelstyle"])
+            if "label_type" in add_plot_kws.keys() :
+                self.__add_plot_kws["label_type"] = add_plot_kws["label_type"]
     def set_heatmap_config(self, **kws) -> None :
         self.__heatmap_config.update(kws)
     def set_annot_config(self, **kws) -> None :
