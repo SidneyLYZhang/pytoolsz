@@ -35,7 +35,7 @@ import re
 __all__ = ["covert_macadress","convert_suffix","around_right","round",
            "local_name","convert_country_code","get_keydate",
            "quick_date","near_date","last_date","get_interval_dates",
-           "getExcelSheets","lastDay"]
+           "getExcelSheets","lastDay","firstDay"]
 
 def covert_macadress(macadress:str, upper:bool = True) -> str:
     """
@@ -303,6 +303,35 @@ def lastDay(keydate:str|pdl.DateTime|None = None,
         anchor = anchor.add(**{xof+"s":1})
     anchor = anchor.in_tz(tz if tz else "UTC")
     return anchor.end_of(xof)
+
+def firstDay(keydate:str|pdl.DateTime|None = None, 
+            of_:str|None = None,
+            point:str = "last", 
+            tz:str|pdl.Timezone|pdl.FixedTimezone|None = None) -> pdl.DateTime :
+    """
+    get the last day of the week/month/year.
+    point == last : get the last day of the last week/month/year.
+    point == near : get the last day of the next week/month/year.
+    point == now : get the last day of this week/month/year.
+    """
+    if of_ in ["week", "month", "year"] :
+        xof = of_
+    elif of_ is None :
+        xof = "month"
+    else:
+        raise ValueError("of_ just support week, month or year!")
+    if point not in ["last", "near", "now"] :
+        raise ValueError("point just support last, near or now!")
+    if keydate is None :
+        anchor = quick_date()
+    else :
+        anchor = keydate if isinstance(keydate, pdl.DateTime) else pdl.parse(keydate)
+    if point == "last" :
+        anchor = anchor.subtract(**{xof+"s":1})
+    if point == "near" :
+        anchor = anchor.add(**{xof+"s":1})
+    anchor = anchor.in_tz(tz if tz else "UTC")
+    return anchor.first_of(xof)
 
 def getExcelSheets(path:Path) -> list :
     if path.suffix in [".xls",".xlsx"] :
