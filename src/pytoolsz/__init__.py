@@ -35,12 +35,12 @@ from pytoolsz.saveExcel import (
     transColname2Letter
 )
 
-__version__ = "0.3.10"
+__version__ = "0.3.12"
 
 def version(println:bool = True, 
             output:bool = False) -> str|None:
     version_txt = [
-        "0.3.11 (2025-05-09)",
+        "0.3.12 (2025-05-09)",
         "Copyright (c) 2024 Sidney Zhang <zly@lyzhang.me>",
         "PyToolsz is licensed under Mulan PSL v2."
     ]

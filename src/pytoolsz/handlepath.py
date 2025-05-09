@@ -16,9 +16,14 @@
 # See the Mulan PSL v2 for more details.
 
 from pathlib import Path
+from typing import Optional, List, Union
 
 import pdfplumber
 import sys
+
+__all__ = [
+    "checkFolders", "lastFile", "read_pdf_text", "find_latest_updated_directory"
+]
 
 
 def checkFolders(folders:str|Path|list[str|Path], 
@@ -88,3 +93,52 @@ def read_pdf_text(pdfPath:str|Path) -> list[str] :
                     txt = txt.split('\n')
                     data.extend(txt)
     return data
+
+def find_latest_updated_directory(
+    target_dir: str,
+    exclude_dirs: Optional[Union[List[str], str]] = None
+) -> Optional[Path]:
+    """
+    在指定的目录下查找最新更新的子文件夹。
+
+    Args:
+        target_dir (str): 目标目录的路径。
+        exclude_dirs (Optional[Union[List[str], str]]): 
+            要排除的文件夹名称列表或单个文件夹名称。
+            可以是字符串（单个目录名）或字符串列表（多个目录名）。
+            默认为None，表示不排除任何目录。
+
+    Returns:
+        Optional[Path]: 最新更新的文件夹的Path对象，如果不存在子文件夹则返回None。
+
+    Raises:
+        FileNotFoundError: 当目标目录不存在时引发。
+        NotADirectoryError: 当目标路径不是目录时引发。
+    """
+    target_path = Path(target_dir)
+    # 检查目标路径是否存在且为目录
+    if not target_path.exists():
+        raise FileNotFoundError(f"目录不存在: {target_dir}")
+    if not target_path.is_dir():
+        raise NotADirectoryError(f"不是目录: {target_dir}")
+    
+    # 处理exclude_dirs参数
+    if exclude_dirs is None:
+        exclude_dirs = []
+    elif isinstance(exclude_dirs, str):
+        exclude_dirs = [exclude_dirs]
+    
+    # 获取所有直接子目录（排除符号链接和要排除的目录）
+    subdirs = [
+        d for d in target_path.iterdir() 
+        if (d.is_dir() and 
+            not d.is_symlink() and 
+            d.name not in exclude_dirs)
+    ]
+    
+    if not subdirs:
+        return None
+    
+    # 找到最后修改的子目录
+    latest_subdir = max(subdirs, key=lambda x: x.stat().st_mtime)
+    return latest_subdir
