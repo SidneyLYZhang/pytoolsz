@@ -49,6 +49,8 @@ fsspec==2024.6.1
     # via torch
 holidays==0.55
     # via prophet
+imapclient==3.0.1
+    # via pytoolsz
 importlib-resources==6.4.3
     # via prophet
 inflate64==1.0.0

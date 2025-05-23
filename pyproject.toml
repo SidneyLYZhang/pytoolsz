@@ -29,6 +29,7 @@ dependencies = [
     "pmdarima>=2.0.4",
     "thefuzz>=0.22.1",
     "opencv-python>=4.11.0.86",
+    "imapclient>=3.0.1",
 ]
 requires-python = ">= 3.8"
 readme = "README.md"
