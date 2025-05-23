@@ -30,6 +30,13 @@ from email.header import Header
 from pathlib import Path
 from typing import List, Dict, Union, Optional, Tuple
 
+import imaplib 
+import email
+import os
+from email.header import decode_header 
+from datetime import datetime, timedelta 
+from imapclient import imap_utf7 
+
 from collections.abc import Iterable
 from random import randint
 from rich.console import Console
@@ -37,7 +44,8 @@ from rich.highlighter import Highlighter
 from rich.markdown import Markdown
 
 __all__ = [
-    "println", "print_special", "szformat", "now", "isSubset", "quickmail"
+    "println", "print_special", "szformat", 
+    "now", "isSubset", "quicksendmail", "load_email_by_subject"
 ]
 
 class RainbowHighlighter(Highlighter):
@@ -100,7 +108,7 @@ def isSubset(superset:Iterable, subset:Iterable) -> bool :
     """判断一个集合是否是另一个集合的子集。"""
     return all(item in superset for item in subset)
 
-def quickmail(
+def quicksendmail(
     myMail: str,
     password: str,
     mailText: str,
@@ -267,3 +275,175 @@ def quickmail(
 
     except Exception as e:
         raise RuntimeError(f"邮件发送失败: {str(e)}") from e
+
+def load_email_by_subject(
+    email_account: str, 
+    password: str, 
+    target_subject: str,
+    imap_server: Optional[str] = None,
+    port: int = 993,
+    use_ssl: bool = True,
+    fuzzy_match: bool = False,
+    date_range: Optional[Tuple[datetime, datetime]] = None,
+    mailbox: str = 'INBOX',
+    download_attachments: bool = False,
+    attachment_dir: str = 'attachments'
+) -> List[Dict[str, Union[str, List[Dict[str, str]]]]]:
+    """ 
+    登录邮箱并加载匹配条件的邮件(支持附件下载) 
+    
+    参数: 
+        email_account: 邮箱账号 
+        password: 邮箱密码/授权码 
+        imap_server: IMAP服务器地址
+        port: IMAP端口(默认993) 
+        use_ssl: 是否使用SSL连接(默认True) 
+        target_subject: 要查找的邮件主题 
+        fuzzy_match: 是否启用模糊匹配(默认False) 
+        date_range: 日期范围元组(start_date, end_date)，如未指定则搜索最近7天 
+        mailbox: 要搜索的邮箱文件夹(默认'INBOX') 
+        download_attachments: 是否下载附件(默认False) 
+        attachment_dir: 附件保存目录(默认'attachments') 
+        
+    返回: 
+        匹配的邮件内容列表(包含附件信息) 
+    """
+    try:
+        # 设置默认日期范围(最近7天)
+        if date_range is None:
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=7)
+            date_range = (start_date, end_date)
+            
+        # 创建附件目录 
+        if download_attachments and not os.path.exists(attachment_dir): 
+            os.makedirs(attachment_dir)
+        
+        # 确认服务器
+        if imap_server is None :
+            serv = email_account.split("@")[-1].lower()
+            IMSERVE = {
+                "qq.com": ("imap.qq.com",993),
+                "gmail.com": ("imap.gmail.com",993),
+                "163.com": ("imap.163.com",993),
+                "aliyun.com":("imap.aliyun.com",993),
+                "chinaott.net":("imap.exmail.qq.com",993),
+            }
+            imap_server, port = IMSERVE[serv]
+        
+        # 连接IMAP服务器 
+        if use_ssl:
+            mail = imaplib.IMAP4_SSL(imap_server, port)
+        else:
+            mail = imaplib.IMAP4(imap_server, port)
+        mail.login(email_account, password)
+        status, mailboxes = mail.list()
+        for mb in mailboxes:
+                tmpmailbox = imap_utf7.decode(mb).split('"')[-2]
+                if mailbox in tmpmailbox:
+                    selmailbox = imap_utf7.encode(tmpmailbox)
+        mail.select(selmailbox)  # 选择指定邮箱文件夹
+        
+        # 构建日期搜索条件
+        start_str = date_range[0].strftime("%d-%b-%Y")
+        end_str = date_range[1].strftime("%d-%b-%Y")
+        date_criteria = f'(SINCE "{start_str}" BEFORE "{end_str}")'
+        
+        # 搜索邮件
+        status, messages = mail.search(None, date_criteria)
+        if status != 'OK':
+            return []
+            
+        email_contents = []
+        for mail_id in messages[0].split():
+            # 获取邮件内容
+            status, data = mail.fetch(mail_id, '(RFC822)')
+            if status != 'OK':
+                continue
+                
+            # 解析邮件
+            msg = email.message_from_bytes(data[0][1])
+            subject_header = decode_header(msg['Subject'])
+            subject = ""
+            for part, encoding in subject_header:
+                if isinstance(part, bytes):
+                    try:
+                        subject += part.decode(encoding if encoding else 'utf-8', errors='replace')
+                    except:
+                        subject += part.decode('gbk', errors='replace')
+                else:
+                    subject += str(part)
+            
+            # 检查主题匹配
+            if fuzzy_match:
+                pattern = re.compile(re.escape(target_subject), re.IGNORECASE)
+                if not pattern.search(subject):
+                    continue
+            else:
+                if target_subject.lower() != subject.lower():
+                    continue
+            
+            # 提取邮件正文
+            body = ""
+            html_body = ""
+            if msg.is_multipart():
+                for part in msg.walk():
+                    content_type = part.get_content_type()
+                    content_disposition = str(part.get("Content-Disposition"))
+                    
+                    if "attachment" not in content_disposition:
+                        if content_type == "text/plain":
+                            body += part.get_payload(decode=True).decode(
+                                part.get_content_charset() or 'utf-8', 
+                                errors='replace'
+                            )
+                        elif content_type == "text/html":
+                            html_body += part.get_payload(decode=True).decode(
+                                part.get_content_charset() or 'utf-8',
+                                errors='replace'
+                            )
+            else:
+                body = msg.get_payload(decode=True).decode(
+                    msg.get_content_charset() or 'utf-8',
+                    errors='replace'
+                )
+            
+            # 处理附件
+            attachments = []
+            if download_attachments:
+                for part in msg.walk():
+                    if part.get_content_maintype() == 'multipart':
+                        continue
+                    if part.get('Content-Disposition') is None:
+                        continue
+                    
+                    filename = part.get_filename()
+                    if filename:
+                        filename = decode_header(filename)[0][0]
+                        if isinstance(filename, bytes):
+                            filename = filename.decode('utf-8', errors='replace')
+                        
+                        filepath = os.path.join(attachment_dir, filename)
+                        with open(filepath, 'wb') as f:
+                            f.write(part.get_payload(decode=True))
+                        attachments.append({
+                            'filename': filename,
+                            'filepath': os.path.abspath(filepath)
+                        })
+            
+            email_contents.append({
+                'subject': subject,
+                'from': msg.get('From'),
+                'date': msg.get('Date'),
+                'text_body': body.strip(),
+                'html_body': html_body.strip(),
+                'attachments': attachments
+            })
+            
+        mail.close()
+        mail.logout()
+        return email_contents
+        
+    except Exception as e:
+        print(f"发生错误: {e}")
+        return []
