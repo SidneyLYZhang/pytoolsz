@@ -1,6 +1,6 @@
 # pytoolsz
 
-一组常用的Python工具，主要用于处理自己常用的工作问题。
+一组常用的Python工具，主要用于处理自己常用的工作问题（主要在Windows上）。
 （说白了就是个工具集的罗列，减少一些重复劳动。）
 
 目前已有的小工具：
@@ -20,6 +20,9 @@
 ```bash
 pip install pytoolsz
 ```
+
+Linux上可以安装 `pytoolsz-lnx` ，只是目前 `pytoolsz-lnx` 功能较少。
+
 
 **其他说明**
 

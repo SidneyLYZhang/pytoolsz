@@ -23,6 +23,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Self
 from rich import print
+from typing import List, Union
 
 from pmdarima.model_selection import train_test_split
 
@@ -59,6 +60,34 @@ def dataframeColumns(data:str|Path|pl.DataFrame|pd.DataFrame) -> list[str] :
     else :
         tcols = data.columns
     return tcols
+
+def get_excel_sheets(file_path: Union[str, Path]) -> List[str]:
+    """
+    获取Excel文件的所有工作表名称
+    参数:
+        file_path (str/Path): Excel文件路径
+    返回:
+        List[str]: 工作表名称列表，如果文件不是Excel格式或读取失败则返回空列表
+    异常:
+        无 - 所有异常都被捕获并返回空列表
+    """
+    # 确保路径是Path对象
+    path = Path(file_path) if isinstance(file_path, str) else file_path
+    
+    # 支持的Excel扩展名列表（包括所有常见Excel格式）
+    excel_extensions = [".xls", ".xlsx", ".xlsm", ".xlsb", ".odf", ".ods", ".odt"]
+    
+    try:
+        # 检查文件是否存在且是Excel格式
+        if path.exists() and path.suffix.lower() in excel_extensions:
+            # 使用with确保文件资源正确释放
+            with pd.ExcelFile(path) as xls:
+                return xls.sheet_names
+        return []
+    except Exception as e:
+        # 捕获所有可能的异常（文件损坏、密码保护等）
+        print(f"读取Excel文件失败: {e}")
+        return []
 
 def checkExpr(ziel:pl.Expr|list[pl.Expr], 
               indata:str|Path|pl.DataFrame|pd.DataFrame,
